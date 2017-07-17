@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">RobotCar Controller</string>
+    <string name="detail_app_name">Car Controller</string>
 </resources>

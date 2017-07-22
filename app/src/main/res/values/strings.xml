@@ -1,4 +1,19 @@
 <resources>
-    <string name="app_name">RobotCar Controller</string>
-    <string name="detail_app_name">Car Controller</string>
+    <string name="app_name">BatMobile Controller</string>
+    <string name="detail_app_name">BatMobile</string>
+
+
+    <!-- Connection status -->
+    <string name="no_connection">Not connected</string>
+    <string name="connecting">Connecting...</string>
+    <string name="connected">Connected sucessfully</string>
+    <string name="discovering_services">Discovering services...</string>
+    <string name="disconnected">Car has disconnected</string>
+
+
+
+
+
+
+
 </resources>

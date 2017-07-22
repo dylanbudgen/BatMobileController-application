@@ -40,6 +40,9 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
+
+        /* Allowing to run on emulator
+
         // Check if BLE is supported by the device
         if(mBleWrapper.checkBleHardwareAvailable() == false) {
             Toast.makeText(this, "No BLE compatible hardware detected",
@@ -47,9 +50,7 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
 
-
-
-
+        */
 
 
     }

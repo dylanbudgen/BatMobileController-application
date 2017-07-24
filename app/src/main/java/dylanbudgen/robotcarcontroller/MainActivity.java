@@ -56,50 +56,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public void connect() {
-
-        // Permissions for fine location called when user wishes to use Bluetooth
-        if (Build.VERSION.SDK_INT > 22) {  // Device needs runtime permissions
-            Log.d("DEBUG", "000P Device needs runtime permissions.");
-
-            // Checking if permission for location is already set
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                Log.d("DEBUG", "000P Permission granted.");
-            } else {
-                Log.d("DEBUG", "000P Permission not granted");
-
-                if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                    Toast.makeText(this, "The app needs location permission for Bluetooth search", Toast.LENGTH_SHORT).show();
-                }
-
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ACCESS_FINE_LOCATION);
-            }
-
-        } else { // Device doesn't need runtime permissions
-            Log.d("DEBUG", "000P Device does not need runtime permissions.");
-        }
-
-
-
-
-
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-
-        if (requestCode == REQUEST_CODE_ACCESS_FINE_LOCATION) {
-            // Permission for location recieved
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d("DEBUG", "000P User Permission granted.");
-            } else {
-                Log.d("DEBUG", "000P User Permission not granted");
-                Toast.makeText(this, "Permisson not granted. Permission is needed to use Bluetooth.", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        }
-    }
 
 
 
@@ -110,8 +66,6 @@ public class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
-
-
 
 
     @Override
@@ -142,20 +96,99 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-
     // Show the about page
     private void showAbout() {
         return;
     }
 
-
-
-
     // Change the settings
     private void showSettings() {
         return;
     }
+
+
+
+    public void connect() {
+
+        // Permissions for fine location called when user wishes to use Bluetooth
+        checkBluetoothPermissions();
+
+
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private void checkBluetoothPermissions() {
+
+        if (Build.VERSION.SDK_INT > 22) {  // Device needs runtime permissions
+            Log.d("DEBUG", "000P Device needs runtime permissions.");
+
+            // Checking if permission for location is already set
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                Log.d("DEBUG", "000P Permission granted.");
+            } else {
+                Log.d("DEBUG", "000P Permission not granted");
+
+                if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    Toast.makeText(this, "The app needs location permission for Bluetooth search", Toast.LENGTH_SHORT).show();
+                }
+
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ACCESS_FINE_LOCATION);
+            }
+
+        } else { // Device doesn't need runtime permissions
+            Log.d("DEBUG", "000P Device does not need runtime permissions.");
+        }
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+
+        if (requestCode == REQUEST_CODE_ACCESS_FINE_LOCATION) {
+            // Permission for location recieved
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("DEBUG", "000P User Permission granted.");
+            } else {
+                Log.d("DEBUG", "000P User Permission not granted");
+                Toast.makeText(this, "Permisson not granted. Permission is needed to use Bluetooth.", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+    }
+
+
+
+
+
+
+
 
 
 }

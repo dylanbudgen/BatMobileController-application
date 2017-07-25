@@ -1,0 +1,33 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory
+        android:title="@string/speed_group"
+        android:key="car_settings">
+
+        <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->
+        <ListPreference
+            android:defaultValue="2"
+            android:entries="@array/speed_titles"
+            android:entryValues="@array/speed_values"
+            android:key="speed"
+            android:negativeButtonText="@null"
+            android:positiveButtonText="@null"
+            android:title="@string/speed_title"
+            android:summary="@string/speed_summary"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/sound_group"
+        android:key="sound_settings">
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="sound_switch"
+            android:summary="@string/sound_summary"
+            android:title="@string/sound_title" />
+
+    </PreferenceCategory>
+
+
+</PreferenceScreen>

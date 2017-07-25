@@ -58,9 +58,12 @@ public class MainActivity extends AppCompatActivity {
     private final int BACKWARD = 4;
 
     // Colours
-    private final static int GREY = R.drawable.rect_grey;
-    private final static int GREEN = R.drawable.rect_green;
-    private final static int RED = R.drawable.rect_red;
+    private final static int RECT_GREY = R.drawable.rect_grey;
+    private final static int RECT_GREEN = R.drawable.rect_green;
+    private final static int RECT_RED = R.drawable.rect_red;
+    private final static int CIRCLE_GREY = R.drawable.circle_grey;
+    private final static int CIRCLE_GREEN = R.drawable.circle_green;
+    private final static int CIRCLE_RED = R.drawable.circle_red;
 
     // BL wrapper
     private BleWrapper mBleWrapper = null;
@@ -97,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Set up toolbar
-        Toolbar myToolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.main_toolbar);
         setSupportActionBar(myToolbar);
 
         setupButtonListener(R.id.button_direction_stop, 0);
@@ -155,19 +158,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                //********************************************************************************************************************************************
-                //********************************************************************************************************************************************
-                // Services are found, so we can update the progress bar to connected // TODO: 19/07/2017
-
-
-                //********************************************************************************************************************************************
-                //********************************************************************************************************************************************
-                // Make a note in the speed that user has to restart application???? OR make a check when returning from settings screen // TODO: 19/07/2017
-                Log.d("DEBUG", "000P Settings write 1");
                 updateStatusMessage("Updating settings...");
-                Log.d("DEBUG", "000P Settings write 2");
                 setSpeedSetting();
-
             }
 
 
@@ -246,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
                         updateProgressBar(false);
                         updateStatusMessage("Connected");
                         updateDirectionButtons(true);
-                        updateUltrasoundGraphics(GREEN);
+                        updateUltrasoundGraphics(RECT_GREEN, CIRCLE_GREEN);
                         break;
                 }
 
@@ -279,19 +271,23 @@ public class MainActivity extends AppCompatActivity {
                 updateStatusMessage("Device has disconnected");
                 updateProgressBar(false);
                 updateDirectionButtons(false);
-                updateUltrasoundGraphics(GREY);
+                updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
 
             }
 
 
         });
 
+        // TODO ENABLE AGAIN AFTER FINISHED TESTING WITH EMULATOR *************************************
+
+        /*
         // Check if BLE is supported by the device
         if(!mBleWrapper.checkBleHardwareAvailable()) {
             Toast.makeText(this, "No BLE compatible hardware detected",
                     Toast.LENGTH_SHORT).show();
             finish();
         }
+        */
 
     }
 
@@ -299,12 +295,10 @@ public class MainActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
 
-        // TODO DISABLE BUTTONS HERE TOO *******************************************************
-
         updateStatusMessage("Press connect to start");
         updateProgressBar(false);
         updateDirectionButtons(false);
-        updateUltrasoundGraphics(GREY);
+        updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
 
         devicesList.clear();
         mBleWrapper.initialize();
@@ -326,11 +320,11 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-    // Required to set up toolbar and add buttons from res/menu/menu.xml
+    // Required to set up toolbar and add buttons from res/main_menu/main_menu.xmlu.xml
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
-        getMenuInflater().inflate(R.menu.menu, menu);
+        getMenuInflater().inflate(R.menu.main_menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -348,13 +342,13 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_settings:
                 // Settings button pressed
                 Log.d("DEBUG", "000P Settings button pressed");
-                showAbout();
+                showSettings();
                 return true;
 
             case R.id.action_about:
                 // About button pressed
                 Log.d("DEBUG", "000P About button pressed");
-                showSettings();
+                showAbout();
                 return true;
 
             default:
@@ -365,12 +359,14 @@ public class MainActivity extends AppCompatActivity {
 
     // Show the about page
     private void showAbout() {
-        return;
+        Intent intent = new Intent(this, AboutActivity.class);
+        startActivity(intent);
     }
 
     // Change the settings
     private void showSettings() {
-        return;
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
     }
 
 
@@ -568,26 +564,26 @@ public class MainActivity extends AppCompatActivity {
 
         if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
             //Log.d("DEBUG", "000P Front Distance is less than " + ERROR_DISTANCE_FORWARD + ", cancelling and writing 0");
-            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RED);
+            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RECT_RED);
             status = false;
         } else {
-            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, GREEN);
+            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RECT_GREEN);
         }
 
         if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
             //Log.d("DEBUG", "000P Left Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
-            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RED);
+            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RECT_RED);
             status = false;
         } else {
-            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, GREEN);
+            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RECT_GREEN);
         }
 
         if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
             //Log.d("DEBUG", "000P Right Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
-            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RED);
+            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RECT_RED);
             status = false;
         } else {
-            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, GREEN);
+            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RECT_GREEN);
         }
 
         // sensors are triggered so disable forward button
@@ -713,18 +709,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Null for grey, false for red, true for green
-    private void updateUltrasoundGraphics(final int colour) {
+    private void updateUltrasoundGraphics(final int rectColour, final int circleColour) {
 
-        updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, colour);
-        updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, colour);
-        updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, colour);
+        updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, rectColour);
+        updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, rectColour);
+        updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, rectColour);
 
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
 
                 ImageView image = (ImageView) findViewById(R.id.imageView);
-                image.setImageResource(colour);
+                image.setImageResource(circleColour);
 
             }
         });

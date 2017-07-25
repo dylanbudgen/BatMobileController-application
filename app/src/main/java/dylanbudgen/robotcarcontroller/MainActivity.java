@@ -57,6 +57,11 @@ public class MainActivity extends AppCompatActivity {
     private final int RIGHT = 3;
     private final int BACKWARD = 4;
 
+    // Colours
+    private final static int GREY = R.drawable.rect_grey;
+    private final static int GREEN = R.drawable.rect_green;
+    private final static int RED = R.drawable.rect_red;
+
     // BL wrapper
     private BleWrapper mBleWrapper = null;
 
@@ -215,16 +220,9 @@ public class MainActivity extends AppCompatActivity {
 
                 super.uiSuccessfulWrite(gatt, device, service, ch, description);
 
-                //********************************************************************************************************************************************
-                //********************************************************************************************************************************************
-                // DO I need this line?
-
-                //mBleWrapper.requestCharacteristicValue(ch);
-
                 Log.d("DEBUG", "000P uiSuccessfulWrite.");
 
                 // Chain reaction for the enabling of notifcations
-
                 switch (mState) {
                     case "SET_SPEED_SETTING" :
                         // Now enable the left sensor, then the front sensor
@@ -248,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
                         updateProgressBar(false);
                         updateStatusMessage("Connected");
                         updateDirectionButtons(true);
-                        updateUltrasoundGraphics(true);
+                        updateUltrasoundGraphics(GREEN);
                         break;
                 }
 
@@ -281,17 +279,15 @@ public class MainActivity extends AppCompatActivity {
                 updateStatusMessage("Device has disconnected");
                 updateProgressBar(false);
                 updateDirectionButtons(false);
-                updateUltrasoundGraphics(null);
+                updateUltrasoundGraphics(GREY);
 
-                // TODO *******************************************************************************
-                // TODO All of the things that need to be done when the device disconnect. Disable buttons, grey ultrasound graphic
             }
 
 
         });
 
         // Check if BLE is supported by the device
-        if(mBleWrapper.checkBleHardwareAvailable() == false) {
+        if(!mBleWrapper.checkBleHardwareAvailable()) {
             Toast.makeText(this, "No BLE compatible hardware detected",
                     Toast.LENGTH_SHORT).show();
             finish();
@@ -308,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
         updateStatusMessage("Press connect to start");
         updateProgressBar(false);
         updateDirectionButtons(false);
-        updateUltrasoundGraphics(null);
+        updateUltrasoundGraphics(GREY);
 
         devicesList.clear();
         mBleWrapper.initialize();
@@ -381,11 +377,11 @@ public class MainActivity extends AppCompatActivity {
     private void scan() {
 
         // Check if the window is already open
-        if (mState.equals("SCANNING")) {
+        if(mState.equals("SCANNING")) {
             // The scanning window is already open.
         } else {
             // Check if Bluetooth is enabled
-            if (mBleWrapper.isBtEnabled() == false) {
+            if (!mBleWrapper.isBtEnabled()) {
                 // Bluetooth is not enabled.
                 Intent enableBT = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 startActivity(enableBT);
@@ -568,32 +564,30 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean checkSensor() {
 
-        // // TODO: 21/07/2017 AFTER DEBUGGING, MERGE THE THREE IF STATEMENTS INTO ONE TO REDUCE CODE DUPLCIATION
-
         boolean status = true;
 
         if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
             //Log.d("DEBUG", "000P Front Distance is less than " + ERROR_DISTANCE_FORWARD + ", cancelling and writing 0");
-            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, false);
+            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RED);
             status = false;
         } else {
-            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, true);
+            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, GREEN);
         }
 
         if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
             //Log.d("DEBUG", "000P Left Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
-            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, false);
+            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RED);
             status = false;
         } else {
-            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, true);
+            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, GREEN);
         }
 
         if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
             //Log.d("DEBUG", "000P Right Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
-            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, false);
+            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RED);
             status = false;
         } else {
-            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, true);
+            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, GREEN);
         }
 
         // sensors are triggered so disable forward button
@@ -626,9 +620,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (checkSensor()) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-        } else {
-            // Sensor values are too small - will not write
-        }
+        } // Else sensor values are too small - will not write
 
     }
 
@@ -640,9 +632,7 @@ public class MainActivity extends AppCompatActivity {
         if(checkSensor) {
             if (checkSensor()) {
                 writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-            } else {
-                // Sensor values are too small - will not write
-            }
+            } // Else sensor values are too small - will not write
         } else {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
         }
@@ -709,45 +699,33 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void updateUltrasoundSensorGraphic(final int id, final Boolean status) {
+
+    private void updateUltrasoundSensorGraphic(final int id, final int colour) {
 
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
 
                 TextView textView = (TextView) findViewById(id);
-
-                if(status == null) {
-                    textView.setBackgroundResource(R.drawable.rect_grey);
-                } else if (status) {
-                    textView.setBackgroundResource(R.drawable.rect_green);
-                } else {
-                    textView.setBackgroundResource(R.drawable.rect_red);
-                }
+                textView.setBackgroundResource(colour);
             }
         });
     }
 
     // Null for grey, false for red, true for green
-    private void updateUltrasoundGraphics(final Boolean status) {
+    private void updateUltrasoundGraphics(final int colour) {
 
-        updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, status);
-        updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, status);
-        updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, status);
+        updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, colour);
+        updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, colour);
+        updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, colour);
 
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
 
                 ImageView image = (ImageView) findViewById(R.id.imageView);
+                image.setImageResource(colour);
 
-                if (status == null) {
-                    image.setImageResource(R.drawable.circle_grey);
-                } else if (status){
-                    image.setImageResource(R.drawable.circle_green);
-                } else {
-                    image.setImageResource(R.drawable.circle_red);
-                }
             }
         });
 
@@ -869,7 +847,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void checkBluetoothStatus() {
 
-        if (mBleWrapper.isBtEnabled() == false) {
+        if (!mBleWrapper.isBtEnabled()) {
             // Bluetooth is not enabled.
             Intent enableBT = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivity(enableBT);

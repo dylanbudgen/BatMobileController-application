@@ -10,7 +10,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
@@ -27,14 +26,13 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.ViewGroup.LayoutParams;
-
-import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private final int ERROR_DISTANCE_SIDES = 10;
 
     // Directions
+    private final int STOP = 0;
     private final int FORWARD = 1;
     private final int LEFT = 2;
     private final int RIGHT = 3;
@@ -71,9 +70,9 @@ public class MainActivity extends AppCompatActivity {
     int mDirection = 0;
 
     // Ultrasound values
-    int ultrasoundLeftValue;
-    int ultrasoundFrontValue;
-    int ultrasoundRightValue;
+    int ultrasoundLeftValue = 100;
+    int ultrasoundFrontValue = 100;
+    int ultrasoundRightValue = 100;
 
     // UUIDs of serivces and characteristics
     private static final UUID
@@ -101,9 +100,6 @@ public class MainActivity extends AppCompatActivity {
         setupButtonListener(R.id.button_direction_left, 2);
         setupButtonListener(R.id.button_direction_right, 3);
         setupButtonListener(R.id.button_direction_backward, 4);
-
-        updateStatusMessage("Press connect to start");
-        updateProgressBar(false);
 
         // Initiate BL wrapper
         mBleWrapper = new BleWrapper(this, new BleWrapperUiCallbacks.Null() {
@@ -188,23 +184,22 @@ public class MainActivity extends AppCompatActivity {
 
                 if (updatedUUID.equals(UUID_ULTRASOUND_LEFT)) {
 
-                    Log.d("DEBUG", "000P Ultrasound left read: " + intValue);
+                    //Log.d("DEBUG", "000P Ultrasound left read: " + intValue);
                     ultrasoundLeftValue = intValue;
-                    checkSensor();
 
                 } else if (updatedUUID.equals(UUID_ULTRASOUND_FRONT)) {
 
-                    Log.d("DEBUG", "000P Ultrasound front read: " + intValue);
+                    //Log.d("DEBUG", "000P Ultrasound front read: " + intValue);
                     ultrasoundFrontValue = intValue;
-                    checkSensor();
 
                 } else if (updatedUUID.equals(UUID_ULTRASOUND_RIGHT)) {
 
-                    Log.d("DEBUG", "000P Ultrasound right read: " + intValue);
+                    //Log.d("DEBUG", "000P Ultrasound right read: " + intValue);
                     ultrasoundRightValue = intValue;
-                    checkSensor();
 
                 }
+
+                checkSensor();
 
             }
 
@@ -250,10 +245,10 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case "UPDATE_PROGRESS_BAR" :
                         mState = "";
-
-                        // Update progress bar
                         updateProgressBar(false);
                         updateStatusMessage("Connected");
+                        updateDirectionButtons(true);
+                        updateUltrasoundGraphics(true);
                         break;
                 }
 
@@ -285,6 +280,8 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("DEBUG", "000P Device disconnected");
                 updateStatusMessage("Device has disconnected");
                 updateProgressBar(false);
+                updateDirectionButtons(false);
+                updateUltrasoundGraphics(null);
 
                 // TODO *******************************************************************************
                 // TODO All of the things that need to be done when the device disconnect. Disable buttons, grey ultrasound graphic
@@ -310,6 +307,8 @@ public class MainActivity extends AppCompatActivity {
 
         updateStatusMessage("Press connect to start");
         updateProgressBar(false);
+        updateDirectionButtons(false);
+        updateUltrasoundGraphics(null);
 
         devicesList.clear();
         mBleWrapper.initialize();
@@ -322,7 +321,6 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
 
         // TODO CLOSE THE POPUP WINDOW IF APP CLOSES, THIS WILL SCREW THIS UP OTHERWISE
-
 
         mBleWrapper.stopScanning();
         mBleWrapper.diconnect();
@@ -480,12 +478,6 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
-
-
-
-
-
     }
 
     // Create a message handling object as an anonymous class.
@@ -519,40 +511,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
-    private void updateProgressBar(final boolean visibility) {
-
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-
-                ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
-
-                if (visibility) {
-                    progressBar.setVisibility(ProgressBar.VISIBLE);
-                } else {
-                    progressBar.setVisibility(ProgressBar.INVISIBLE);
-                }
-
-
-            }
-        });
-
-    }
-
-
-    private void updateStatusMessage(final String message) {
-
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-
-                TextView textView = (TextView) findViewById(R.id.textview_connection_status);
-                textView.setText(message);
-
-            }
-        });
-    }
 
 
     public void enableNotifications(UUID serviceUUID, UUID charUUID) {
@@ -606,40 +564,54 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
+
     public boolean checkSensor() {
 
         // // TODO: 21/07/2017 AFTER DEBUGGING, MERGE THE THREE IF STATEMENTS INTO ONE TO REDUCE CODE DUPLCIATION
 
-        // Only check sensors if car is moving forward
-        if (mDirection == FORWARD) {
+        boolean status = true;
 
-            Log.d("DEBUG", "000P mDirection is forward so testing sensors");
-
-            if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
-                Log.d("DEBUG", "000P Front Distance is less than " + ERROR_DISTANCE_FORWARD + ", cancelling and writing 0");
-
-                mDirection = 0;
-                changeDirection(0);
-                return false;
-            }
-
-            if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
-                Log.d("DEBUG", "000P Left Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
-
-                mDirection = 0;
-                changeDirection(0);
-                return false;
-            }
-
-            if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
-                Log.d("DEBUG", "000P Right Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
-
-                mDirection = 0;
-                changeDirection(0);
-                return false;
-            }
+        if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
+            //Log.d("DEBUG", "000P Front Distance is less than " + ERROR_DISTANCE_FORWARD + ", cancelling and writing 0");
+            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, false);
+            status = false;
+        } else {
+            updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, true);
         }
 
+        if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
+            //Log.d("DEBUG", "000P Left Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
+            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, false);
+            status = false;
+        } else {
+            updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, true);
+        }
+
+        if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
+            //Log.d("DEBUG", "000P Right Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
+            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, false);
+            status = false;
+        } else {
+            updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, true);
+        }
+
+        // sensors are triggered so disable forward button
+        if (!status) {
+
+            updateForwardButton(false);
+
+            if (mDirection == FORWARD) {
+                changeDirection(STOP);
+                return status;
+            }
+
+            // direction is not forward, so can proceed
+            return true;
+        }
+
+        // sensors are all fine, so return true and enable forward button
+        updateForwardButton(true);
         return true;
     }
 
@@ -647,15 +619,173 @@ public class MainActivity extends AppCompatActivity {
 
         mDirection = direction;
 
+        if (direction == STOP) {
+            writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
+            return;
+        }
+
         if (checkSensor()) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
         } else {
             // Sensor values are too small - will not write
         }
+
+    }
+
+
+    public void changeDirection1(int direction, boolean checkSensor) {
+
+        mDirection = direction;
+
+        if(checkSensor) {
+            if (checkSensor()) {
+                writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
+            } else {
+                // Sensor values are too small - will not write
+            }
+        } else {
+            writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
+        }
+
+
     }
 
 
 
+
+
+
+    private void updateForwardButton(final boolean status) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                Button buttonForward = (Button) findViewById(R.id.button_direction_forward);
+                buttonForward.setEnabled(status);
+
+
+            }
+        });
+    }
+
+    private void updateDirectionButtons(final boolean status) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                Button buttonStop = (Button) findViewById(R.id.button_direction_stop);
+                buttonStop.setEnabled(status);
+
+                Button buttonLeft = (Button) findViewById(R.id.button_direction_left);
+                buttonLeft.setEnabled(status);
+
+                Button buttonForward = (Button) findViewById(R.id.button_direction_forward);
+                buttonForward.setEnabled(status);
+
+                Button buttonRight = (Button) findViewById(R.id.button_direction_right);
+                buttonRight.setEnabled(status);
+
+                Button buttonBackward = (Button) findViewById(R.id.button_direction_backward);
+                buttonBackward.setEnabled(status);
+
+
+            }
+        });
+
+    }
+
+
+    private void updateUltrasoundSensorGraphic(final int id) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                TextView textView = (TextView) findViewById(id);
+                textView.setBackgroundResource(R.drawable.rect_grey);
+            }
+        });
+
+    }
+
+    private void updateUltrasoundSensorGraphic(final int id, final Boolean status) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                TextView textView = (TextView) findViewById(id);
+
+                if(status == null) {
+                    textView.setBackgroundResource(R.drawable.rect_grey);
+                } else if (status) {
+                    textView.setBackgroundResource(R.drawable.rect_green);
+                } else {
+                    textView.setBackgroundResource(R.drawable.rect_red);
+                }
+            }
+        });
+    }
+
+    // Null for grey, false for red, true for green
+    private void updateUltrasoundGraphics(final Boolean status) {
+
+        updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, status);
+        updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, status);
+        updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, status);
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                ImageView image = (ImageView) findViewById(R.id.imageView);
+
+                if (status == null) {
+                    image.setImageResource(R.drawable.circle_grey);
+                } else if (status){
+                    image.setImageResource(R.drawable.circle_green);
+                } else {
+                    image.setImageResource(R.drawable.circle_red);
+                }
+            }
+        });
+
+    }
+
+
+    private void updateProgressBar(final boolean visibility) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
+
+                if (visibility) {
+                    progressBar.setVisibility(ProgressBar.VISIBLE);
+                } else {
+                    progressBar.setVisibility(ProgressBar.INVISIBLE);
+                }
+
+
+            }
+        });
+    }
+
+
+    private void updateStatusMessage(final String message) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                TextView textView = (TextView) findViewById(R.id.textview_connection_status);
+                textView.setText(message);
+
+            }
+        });
+    }
 
 
 
@@ -692,6 +822,8 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
+
     private void setupButtonListener(int buttonName, final int direction) {
 
         Button button = (Button) findViewById(buttonName);
@@ -706,15 +838,12 @@ public class MainActivity extends AppCompatActivity {
                         Log.d("DEBUG", "00P Button down " + " Direction: " + direction);
 
                         mDirection = direction;
-
-                        if (checkSensor()) {
-                            changeDirection(direction);
-                        }
+                        changeDirection(direction);
                         break;
 
                     case MotionEvent.ACTION_UP:
                         Log.d("DEBUG", "00P Button up " + " Direction: " + direction);
-                        changeDirection(0);
+                        changeDirection(STOP);
                         break;
                 }
                 return true;

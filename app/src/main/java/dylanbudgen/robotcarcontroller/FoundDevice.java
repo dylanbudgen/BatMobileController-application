@@ -6,22 +6,22 @@ package dylanbudgen.robotcarcontroller;
 
 public class FoundDevice {
 
-    private String deviceUUID;
+    private String deviceAddress;
     private String deviceName;
 
-    FoundDevice(String deviceUUID, String deviceName) {
+    FoundDevice(String deviceAddress, String deviceName) {
 
-        this.deviceUUID = deviceUUID;
+        this.deviceAddress = deviceAddress;
         this.deviceName = deviceName;
 
     }
 
-    public String getDeviceUUID() {
-        return deviceUUID;
+    public String getDeviceAddress() {
+        return deviceAddress;
     }
 
-    public void setDeviceUUID(String deviceUUID) {
-        this.deviceUUID = deviceUUID;
+    public void setDeviceAddress(String deviceAddress) {
+        this.deviceAddress = deviceAddress;
     }
 
     public String getDeviceName() {

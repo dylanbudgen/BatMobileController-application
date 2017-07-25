@@ -47,7 +47,7 @@
         android:layout_marginEnd="8dp" />
 
     <Button
-        android:id="@+id/button_forward"
+        android:id="@+id/button_direction_forward"
         style="@style/Widget.AppCompat.Button"
         android:layout_width="134dp"
         android:layout_height="58dp"
@@ -56,25 +56,25 @@
         android:layout_marginRight="8dp"
         android:text="FORDWARD"
         android:textAppearance="@style/TextAppearance.AppCompat.Title"
-        app:layout_constraintBottom_toTopOf="@+id/button_right"
+        app:layout_constraintBottom_toTopOf="@+id/button_direction_right"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         tools:layout_editor_absoluteY="335dp"
         app:layout_constraintHorizontal_bias="0.504" />
 
     <Button
-        android:id="@+id/button_left"
+        android:id="@+id/button_direction_left"
         style="@style/Widget.AppCompat.Button"
         android:layout_width="136dp"
         android:layout_height="54dp"
         android:layout_marginLeft="0dp"
         android:text="LEFT"
         android:textAppearance="@style/TextAppearance.AppCompat.Title"
-        app:layout_constraintBaseline_toBaselineOf="@+id/button_right"
+        app:layout_constraintBaseline_toBaselineOf="@+id/button_direction_right"
         app:layout_constraintLeft_toLeftOf="parent" />
 
     <Button
-        android:id="@+id/button_right"
+        android:id="@+id/button_direction_right"
         style="@style/Widget.AppCompat.Button"
         android:layout_width="134dp"
         android:layout_height="58dp"
@@ -82,11 +82,11 @@
         android:layout_marginRight="8dp"
         android:text="RIGHT"
         android:textAppearance="@style/TextAppearance.AppCompat.Title"
-        app:layout_constraintBottom_toTopOf="@+id/button_backward"
+        app:layout_constraintBottom_toTopOf="@+id/button_direction_backward"
         app:layout_constraintRight_toRightOf="parent" />
 
     <Button
-        android:id="@+id/button_backward"
+        android:id="@+id/button_direction_backward"
         style="@style/Widget.AppCompat.Button"
         android:layout_width="134dp"
         android:layout_height="58dp"

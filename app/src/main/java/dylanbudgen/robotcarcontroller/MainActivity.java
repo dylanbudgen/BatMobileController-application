@@ -3,9 +3,15 @@ package dylanbudgen.robotcarcontroller;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -16,16 +22,25 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.view.ViewGroup.LayoutParams;
 
-import java.util.ArrayList;
+import org.w3c.dom.Text;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import dylanbudgen.robotcarcontroller.bluetooth.BleNamesResolver;
 import dylanbudgen.robotcarcontroller.bluetooth.BleWrapper;
 import dylanbudgen.robotcarcontroller.bluetooth.BleWrapperUiCallbacks;
 
@@ -33,13 +48,44 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_ACCESS_FINE_LOCATION = 10;
 
+    // Distance until avoidance is detected in cm
+    private final int ERROR_DISTANCE_FORWARD = 10;
+    private final int ERROR_DISTANCE_SIDES = 10;
+
+    // Directions
+    private final int FORWARD = 1;
+    private final int LEFT = 2;
+    private final int RIGHT = 3;
+    private final int BACKWARD = 4;
+
+    // BL wrapper
     private BleWrapper mBleWrapper = null;
 
-    private String mState;
-
-    private ArrayList<FoundDevice> devicesList;
-
+    // Variables for scanning popup
     private FoundDeviceArrayAdapter scanningListviewAdapter;
+    private ArrayList<FoundDevice> devicesList = new ArrayList<>();
+    private ScannerPopup scanner = null;
+
+    // States
+    private String mState = "";
+    int mDirection = 0;
+
+    // Ultrasound values
+    int ultrasoundLeftValue;
+    int ultrasoundFrontValue;
+    int ultrasoundRightValue;
+
+    // UUIDs of serivces and characteristics
+    private static final UUID
+            UUID_DIRECTION_SERVICE = UUID.fromString("f0000a000-0000-1000-8000-00805f9b34fb"),
+            UUID_DIRECTION_WRITE = UUID.fromString("f0000a002-0000-1000-8000-00805f9b34fb"),
+            UUID_SPEED_SERVICE = UUID.fromString("f0000a003-0000-1000-8000-00805f9b34fb"),
+            UUID_SPEED_WRITE = UUID.fromString("f0000a004-0000-1000-8000-00805f9b34fb"),
+            UUID_ULTRASOUND_SERVICE = UUID.fromString("f0000a005-0000-1000-8000-00805f9b34fb"),
+            UUID_ULTRASOUND_LEFT = UUID.fromString("f0000a007-0000-1000-8000-00805f9b34fb"),
+            UUID_ULTRASOUND_FRONT = UUID.fromString("f0000a006-0000-1000-8000-00805f9b34fb"),
+            UUID_ULTRASOUND_RIGHT = UUID.fromString("f0000a008-0000-1000-8000-00805f9b34fb");
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,10 +96,14 @@ public class MainActivity extends AppCompatActivity {
         Toolbar myToolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(myToolbar);
 
-        // Initiate variables
-        devicesList = new ArrayList<>();
-        mState = "";
+        setupButtonListener(R.id.button_direction_stop, 0);
+        setupButtonListener(R.id.button_direction_forward, 1);
+        setupButtonListener(R.id.button_direction_left, 2);
+        setupButtonListener(R.id.button_direction_right, 3);
+        setupButtonListener(R.id.button_direction_backward, 4);
 
+        updateStatusMessage("Press connect to start");
+        updateProgressBar(false);
 
         // Initiate BL wrapper
         mBleWrapper = new BleWrapper(this, new BleWrapperUiCallbacks.Null() {
@@ -74,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
 
                     // Checking if device has already been found
                     for (FoundDevice foundDevice : devicesList) {
-                        if (deviceAddress.equals(foundDevice.getDeviceUUID())) {
+                        if (deviceAddress.equals(foundDevice.getDeviceAddress())) {
                             return; // Device has already been found
                         }
                     }
@@ -85,6 +135,161 @@ public class MainActivity extends AppCompatActivity {
                 }
 
             }
+
+            // Executed when a service is found
+            @Override
+            public void uiAvailableServices(BluetoothGatt gatt,
+                                            BluetoothDevice device,
+                                            List<BluetoothGattService> services) {
+
+                for (BluetoothGattService service : services) {
+                    String serviceName = BleNamesResolver.resolveUuid(service.getUuid().toString());
+
+                    Log.d("DEBUG", "000P Found service: " + serviceName + " with UUID: "
+                            + service.getUuid().toString());
+
+                    for (BluetoothGattCharacteristic c : service.getCharacteristics()) {
+                        Log.d("DEBUG", "000P Found characteristic: " + " with UUID: "
+                                + c.getUuid().toString());
+                    }
+                }
+
+                //********************************************************************************************************************************************
+                //********************************************************************************************************************************************
+                // Services are found, so we can update the progress bar to connected // TODO: 19/07/2017
+
+
+                //********************************************************************************************************************************************
+                //********************************************************************************************************************************************
+                // Make a note in the speed that user has to restart application???? OR make a check when returning from settings screen // TODO: 19/07/2017
+                Log.d("DEBUG", "000P Settings write 1");
+                updateStatusMessage("Updating settings...");
+                Log.d("DEBUG", "000P Settings write 2");
+                setSpeedSetting();
+
+            }
+
+
+            // Executed when a new value for a characteristic is found (also through notifications)
+            @Override
+            public void uiNewValueForCharacteristic(BluetoothGatt gatt,
+                                                    BluetoothDevice device,
+                                                    BluetoothGattService service,
+                                                    BluetoothGattCharacteristic ch,
+                                                    String strValue,
+                                                    int intValue,
+                                                    byte[] rawValue,
+                                                    String timestamp) {
+
+                super.uiNewValueForCharacteristic(gatt,device,service,ch,strValue,
+                        intValue,rawValue,timestamp);
+
+                UUID updatedUUID = ch.getUuid();
+
+                if (updatedUUID.equals(UUID_ULTRASOUND_LEFT)) {
+
+                    Log.d("DEBUG", "000P Ultrasound left read: " + intValue);
+                    ultrasoundLeftValue = intValue;
+                    checkSensor();
+
+                } else if (updatedUUID.equals(UUID_ULTRASOUND_FRONT)) {
+
+                    Log.d("DEBUG", "000P Ultrasound front read: " + intValue);
+                    ultrasoundFrontValue = intValue;
+                    checkSensor();
+
+                } else if (updatedUUID.equals(UUID_ULTRASOUND_RIGHT)) {
+
+                    Log.d("DEBUG", "000P Ultrasound right read: " + intValue);
+                    ultrasoundRightValue = intValue;
+                    checkSensor();
+
+                }
+
+            }
+
+            // Executed on successful write
+            @Override
+            public void uiSuccessfulWrite( BluetoothGatt gatt,
+                                           BluetoothDevice device,
+                                           BluetoothGattService service,
+                                           BluetoothGattCharacteristic ch,
+                                           String description) {
+
+                BluetoothGattCharacteristic c;
+
+                super.uiSuccessfulWrite(gatt, device, service, ch, description);
+
+                //********************************************************************************************************************************************
+                //********************************************************************************************************************************************
+                // DO I need this line?
+
+                //mBleWrapper.requestCharacteristicValue(ch);
+
+                Log.d("DEBUG", "000P uiSuccessfulWrite.");
+
+                // Chain reaction for the enabling of notifcations
+
+                switch (mState) {
+                    case "SET_SPEED_SETTING" :
+                        // Now enable the left sensor, then the front sensor
+                        mState = "ULTRASOUND_FRONT_ENABLE";
+                        Log.d("DEBUG", "000P Nots for left. mState = " + mState);
+                        enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_LEFT);
+                        break;
+                    case "ULTRASOUND_FRONT_ENABLE" :
+                        // Now enable front sensor, then the right sensor
+                        mState = "ULTRASOUND_RIGHT_ENABLE";
+                        Log.d("DEBUG", "000P Nots for front. mState = " + mState);
+                        enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_FRONT);
+                        break;
+                    case "ULTRASOUND_RIGHT_ENABLE" :
+                        mState = "UPDATE_PROGRESS_BAR";
+                        Log.d("DEBUG", "000P Nots for right. mState = " + mState);;
+                        enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_RIGHT);
+                        break;
+                    case "UPDATE_PROGRESS_BAR" :
+                        mState = "";
+
+                        // Update progress bar
+                        updateProgressBar(false);
+                        updateStatusMessage("Connected");
+                        break;
+                }
+
+
+            }
+
+            // Executed on failed write
+            @Override
+            public void uiFailedWrite( BluetoothGatt gatt,
+                                       BluetoothDevice device,
+                                       BluetoothGattService service,
+                                       BluetoothGattCharacteristic ch,
+                                       String description) {
+
+                super.uiFailedWrite(gatt, device, service, ch, description);
+
+                mBleWrapper.diconnect();
+
+                updateStatusMessage("Error occurred. Please try again.");
+                updateProgressBar(false);
+
+                Log.d("DEBUG", "000P uiFailedWrite");
+            }
+
+            @Override
+            public void uiDeviceDisconnected(BluetoothGatt gatt, BluetoothDevice device) {
+                super.uiDeviceDisconnected(gatt, device);
+
+                Log.d("DEBUG", "000P Device disconnected");
+                updateStatusMessage("Device has disconnected");
+                updateProgressBar(false);
+
+                // TODO *******************************************************************************
+                // TODO All of the things that need to be done when the device disconnect. Disable buttons, grey ultrasound graphic
+            }
+
 
         });
 
@@ -101,6 +306,11 @@ public class MainActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
 
+        // TODO DISABLE BUTTONS HERE TOO *******************************************************
+
+        updateStatusMessage("Press connect to start");
+        updateProgressBar(false);
+
         devicesList.clear();
         mBleWrapper.initialize();
 
@@ -112,6 +322,7 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
 
         // TODO CLOSE THE POPUP WINDOW IF APP CLOSES, THIS WILL SCREW THIS UP OTHERWISE
+
 
         mBleWrapper.stopScanning();
         mBleWrapper.diconnect();
@@ -137,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_connect:
                 // Connect button pressed
                 Log.d("DEBUG", "000P Connect button pressed");
-                connect();
+                scan();
                 return true;
 
             case R.id.action_settings:
@@ -169,8 +380,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-    private void connect() {
+    private void scan() {
 
         // Check if the window is already open
         if (mState.equals("SCANNING")) {
@@ -223,8 +433,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View view) {
 
-                        mBleWrapper.stopScanning();
                         mState = "";
+                        mBleWrapper.stopScanning();
                         devicesList.clear();
                         mPopupWindow.dismiss();
 
@@ -256,6 +466,7 @@ public class MainActivity extends AppCompatActivity {
 
                 ListView listView = (ListView) customView.findViewById(R.id.listView_scanning);
                 listView.setAdapter(scanningListviewAdapter);
+                listView.setOnItemClickListener(mMessageClickedHandler);
 
                 if(mBleWrapper == null) {
                     Log.d("DEBUG", "000P Wrapper is null");
@@ -264,12 +475,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 // Start scanning
                 mBleWrapper.startScanning();
-
-                /* TODO TO BE USED WHEN THE LIST IS UPDATED
-
-                ArrayAdapter listAdapter = (ArrayAdapter) listView.getAdapter();
-                listAdapter.notifyDataSetChanged();
-                */
             }
         }
 
@@ -280,13 +485,174 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+
+    }
+
+    // Create a message handling object as an anonymous class.
+    private AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
+        public void onItemClick(AdapterView parent, View v, int position, long id) {
+
+            mBleWrapper.stopScanning();
+            connect(devicesList.get(position).getDeviceAddress());
+
+            // TODO *******************************************************************************
+            // TODO close the popup
+
+        }
+    };
+
+
+    public void connect(String address) {
+
+        Log.d("DEBUG", "000P Connect to: " + address);
+
+        if (mBleWrapper.isConnected()) {
+            Log.d("DEBUG", "000P Already connected");
+        } else {
+            Log.d("DEBUG", "000P Connecting");
+
+            updateProgressBar(true);
+            updateStatusMessage("Connecting...");
+
+            mBleWrapper.connect(address);
+        }
+
     }
 
 
+    private void updateProgressBar(final boolean visibility) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                ProgressBar progressBar = (ProgressBar) findViewById(R.id.progressBar);
+
+                if (visibility) {
+                    progressBar.setVisibility(ProgressBar.VISIBLE);
+                } else {
+                    progressBar.setVisibility(ProgressBar.INVISIBLE);
+                }
 
 
+            }
+        });
+
+    }
 
 
+    private void updateStatusMessage(final String message) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                TextView textView = (TextView) findViewById(R.id.textview_connection_status);
+                textView.setText(message);
+
+            }
+        });
+    }
+
+
+    public void enableNotifications(UUID serviceUUID, UUID charUUID) {
+
+        Log.d("DEBUG", "000P Setting on notifications");
+        Log.d("DEBUG", "000P for: " + charUUID);
+
+        BluetoothGatt gatt;
+        BluetoothGattCharacteristic c;
+
+
+        if(!mBleWrapper.isConnected()) {
+            // TODO WARN USER and make method ************************************************
+            Log.d("DEBUG", "000P Not connected");
+            return;
+        }
+
+        // Set on notifications
+        gatt = mBleWrapper.getGatt();
+        c = gatt.getService(serviceUUID).getCharacteristic(charUUID);
+        mBleWrapper.setNotificationForCharacteristic(c, true);
+
+    }
+
+    public void setSpeedSetting() {
+
+        Log.d("DEBUG", "000P Settings write");
+
+        mState = "SET_SPEED_SETTING";
+
+        // Set the settings for speed
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        int speed = Integer.parseInt(sharedPref.getString("speed", "2"));
+        Log.d("DEBUG", "000P Changing settings, value is: " + speed);
+
+        writeToCharacteristic(UUID_SPEED_SERVICE, UUID_SPEED_WRITE, speed);
+    }
+
+    public void writeToCharacteristic(UUID serivce, UUID characteristic, int writeValue) {
+
+        BluetoothGatt gatt;
+        BluetoothGattCharacteristic c;
+
+        gatt = mBleWrapper.getGatt();
+        c = gatt.getService(serivce).getCharacteristic(characteristic);
+
+        byte[] value = new byte[1];
+
+        value[0] = (byte) (writeValue);
+        mBleWrapper.writeDataToCharacteristic(c, value);
+
+    }
+
+    public boolean checkSensor() {
+
+        // // TODO: 21/07/2017 AFTER DEBUGGING, MERGE THE THREE IF STATEMENTS INTO ONE TO REDUCE CODE DUPLCIATION
+
+        // Only check sensors if car is moving forward
+        if (mDirection == FORWARD) {
+
+            Log.d("DEBUG", "000P mDirection is forward so testing sensors");
+
+            if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
+                Log.d("DEBUG", "000P Front Distance is less than " + ERROR_DISTANCE_FORWARD + ", cancelling and writing 0");
+
+                mDirection = 0;
+                changeDirection(0);
+                return false;
+            }
+
+            if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
+                Log.d("DEBUG", "000P Left Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
+
+                mDirection = 0;
+                changeDirection(0);
+                return false;
+            }
+
+            if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
+                Log.d("DEBUG", "000P Right Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
+
+                mDirection = 0;
+                changeDirection(0);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void changeDirection(int direction) {
+
+        mDirection = direction;
+
+        if (checkSensor()) {
+            writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
+        } else {
+            // Sensor values are too small - will not write
+        }
+    }
 
 
 
@@ -326,6 +692,36 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void setupButtonListener(int buttonName, final int direction) {
+
+        Button button = (Button) findViewById(buttonName);
+
+        button.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+
+                switch (event.getAction()) {
+
+                    case MotionEvent.ACTION_DOWN:
+                        Log.d("DEBUG", "00P Button down " + " Direction: " + direction);
+
+                        mDirection = direction;
+
+                        if (checkSensor()) {
+                            changeDirection(direction);
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        Log.d("DEBUG", "00P Button up " + " Direction: " + direction);
+                        changeDirection(0);
+                        break;
+                }
+                return true;
+            }
+        });
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 
@@ -350,7 +746,6 @@ public class MainActivity extends AppCompatActivity {
             startActivity(enableBT);
         }
     }
-
 
 
 

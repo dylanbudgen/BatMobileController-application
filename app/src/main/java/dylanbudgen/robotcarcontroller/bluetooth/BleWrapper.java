@@ -442,8 +442,32 @@ public class BleWrapper {
         		 mUiCallback.uiNewRssiAvailable(mBluetoothGatt, mBluetoothDevice, rssi);
         	}
         };
+
+        // Added by Akiba
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status)
+        {
+            String deviceName = gatt.getDevice().getName();
+            String serviceName = BleNamesResolver.resolveServiceName(descriptor.getCharacteristic().getService().getUuid().toString().toLowerCase(Locale.getDefault()));
+            String charName = BleNamesResolver.resolveCharacteristicName(descriptor.getCharacteristic().getUuid().toString().toLowerCase(Locale.getDefault()));
+            String description = "Device: " + deviceName + " Service: " + serviceName + " Characteristic: " + charName;
+
+            // we got response regarding our request to write new value to the characteristic
+            // let see if it failed or not
+            if(status == BluetoothGatt.GATT_SUCCESS) {
+                mUiCallback.uiSuccessfulWrite(mBluetoothGatt, mBluetoothDevice, mBluetoothSelectedService, descriptor.getCharacteristic(), description);
+            }
+            else {
+                mUiCallback.uiFailedWrite(mBluetoothGatt, mBluetoothDevice, mBluetoothSelectedService, descriptor.getCharacteristic(), description + " STATUS = " + status);
+            }
+        };
     };
-    
+
+
+
+
+
+
 	private Activity mParent = null;    
 	private boolean mConnected = false;
 	private String mDeviceAddress = "";

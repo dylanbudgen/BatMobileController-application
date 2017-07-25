@@ -124,7 +124,7 @@ public class FoundDeviceArrayAdapter extends ArrayAdapter<FoundDevice>
 
 
         deviceUUID = (TextView) row.findViewById(android.R.id.text2);
-        deviceUUID.setText(foundDevice.getDeviceUUID());
+        deviceUUID.setText(foundDevice.getDeviceAddress());
         deviceUUID.setTextSize(12f);
 
 

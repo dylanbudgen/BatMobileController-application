@@ -10,11 +10,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.view.menu.ActionMenuItemView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Gravity;
@@ -158,6 +160,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
+                // Device was told to disconnect but attempted to connect again
+                Log.d("DEBUG", "000P On services found mState = " + mState);
+                if (mState.equals("MANUAL_DISCONNECT")) {
+                    return;
+                }
+
                 updateStatusMessage("Updating settings...");
                 setSpeedSetting();
             }
@@ -194,6 +202,11 @@ public class MainActivity extends AppCompatActivity {
                     //Log.d("DEBUG", "000P Ultrasound right read: " + intValue);
                     ultrasoundRightValue = intValue;
 
+                }
+
+                // Device was told to disconnect but attempted to connect again
+                if (mState.equals("MANUAL_DISCONNECT")) {
+                    return;
                 }
 
                 checkSensor();
@@ -234,7 +247,7 @@ public class MainActivity extends AppCompatActivity {
                         enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_RIGHT);
                         break;
                     case "UPDATE_PROGRESS_BAR" :
-                        mState = "";
+                        mState = "CONNECTED";
                         updateProgressBar(false);
                         updateStatusMessage("Connected");
                         updateDirectionButtons(true);
@@ -263,23 +276,34 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("DEBUG", "000P uiFailedWrite");
             }
 
+
+            @Override
+            public void uiDeviceConnected(BluetoothGatt gatt, BluetoothDevice device) {
+                super.uiDeviceConnected(gatt, device);
+
+
+                return;
+            }
+
+
             @Override
             public void uiDeviceDisconnected(BluetoothGatt gatt, BluetoothDevice device) {
                 super.uiDeviceDisconnected(gatt, device);
 
-                Log.d("DEBUG", "000P Device disconnected");
-                updateStatusMessage("Device has disconnected");
-                updateProgressBar(false);
-                updateDirectionButtons(false);
-                updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
+                // Device has disconnected unexpectedly - excepted disconnections handled in disconnect()
+                if (!mState.equals("MANUAL_DISCONNECT")) {
 
+                    Log.d("DEBUG", "000P Device disconnected");
+                    updateStatusMessage("Device has disconnected");
+                    updateProgressBar(false);
+                    updateDirectionButtons(false);
+                    updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
+                    mState = "";
+                }
             }
-
-
         });
 
         // TODO ENABLE AGAIN AFTER FINISHED TESTING WITH EMULATOR *************************************
-
         /*
         // Check if BLE is supported by the device
         if(!mBleWrapper.checkBleHardwareAvailable()) {
@@ -295,6 +319,7 @@ public class MainActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
 
+        mState = "";
         updateStatusMessage("Press connect to start");
         updateProgressBar(false);
         updateDirectionButtons(false);
@@ -313,12 +338,10 @@ public class MainActivity extends AppCompatActivity {
         // TODO CLOSE THE POPUP WINDOW IF APP CLOSES, THIS WILL SCREW THIS UP OTHERWISE
 
         mBleWrapper.stopScanning();
-        mBleWrapper.diconnect();
+        disconnect();
         mBleWrapper.close();
 
     }
-
-
 
     // Required to set up toolbar and add buttons from res/main_menu/main_menu.xmlu.xml
     @Override
@@ -389,14 +412,25 @@ public class MainActivity extends AppCompatActivity {
                 // Check if Bluetooth is on
                 checkBluetoothStatus();
 
+                // Already connected to something
+                if (mBleWrapper.isConnected()) {
+                    Log.d("DEBUG", "000P Already connected on scanning check");
+
+                    // Wrapper is already disconnecting
+                    if  (mState.equals("MANUAL_DISCONNECT")) {
+                        Log.d("DEBUG", "000P Disconnect is already in progress");
+                    } else {
+                        disconnect();
+                    }
+
+                    return;
+                }
+
                 // Update the state to prevent user opening multiple windows
                 mState = "SCANNING";
 
                 ConstraintLayout layout = (ConstraintLayout) findViewById(R.id.main_activity);
                 LayoutInflater inflater = (LayoutInflater) this.getSystemService(LAYOUT_INFLATER_SERVICE);
-
-                // According to StackOverflow, last boolean is to detect touches in popup.
-                // Although I think it works without it...
 
                 // Inflate the custom layout/view
                 View customView = inflater.inflate(R.layout.popup_scanning, null, true);
@@ -451,6 +485,18 @@ public class MainActivity extends AppCompatActivity {
                 // Finally, show the popup window at the center location of root relative layout
                 mPopupWindow.showAtLocation(layout, Gravity.CENTER, 0, 0);
 
+                // Set up the button listener for the close button
+                AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
+                    public void onItemClick(AdapterView parent, View v, int position, long id) {
+
+                        mState = "CONNECTING";
+                        mBleWrapper.stopScanning();
+                        mPopupWindow.dismiss();
+                        connect(devicesList.get(position).getDeviceAddress());
+                    }
+                };
+
+                // Set up the list adapter to update the list
                 scanningListviewAdapter = new FoundDeviceArrayAdapter(this,
                         android.R.layout.simple_list_item_2, devicesList);
 
@@ -463,8 +509,11 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     Log.d("DEBUG", "000P Wrapper is not null");
                 }
+
                 // Start scanning
                 mBleWrapper.startScanning();
+
+
             }
         }
 
@@ -472,37 +521,51 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    // Create a message handling object as an anonymous class.
-    private AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
-        public void onItemClick(AdapterView parent, View v, int position, long id) {
-
-            mBleWrapper.stopScanning();
-            connect(devicesList.get(position).getDeviceAddress());
-
-            // TODO *******************************************************************************
-            // TODO close the popup
-
-        }
-    };
-
 
     public void connect(String address) {
 
         Log.d("DEBUG", "000P Connect to: " + address);
 
         if (mBleWrapper.isConnected()) {
-            Log.d("DEBUG", "000P Already connected");
+            Log.d("DEBUG", "000P Already connected on connect");
+            updateStatusMessage("Error occured. Please restart application.");
+
         } else {
             Log.d("DEBUG", "000P Connecting");
-
             updateProgressBar(true);
             updateStatusMessage("Connecting...");
-
             mBleWrapper.connect(address);
         }
-
     }
 
+    /*
+     * Manual disconnect - required to allow time for wrapper to disconnect successfully
+     */
+    public void disconnect() {
+
+        mState = "MANUAL_DISCONNECT";
+
+        mBleWrapper.diconnect();
+
+        updateProgressBar(true);
+        updateStatusMessage("Disconnecting...");
+        updateDirectionButtons(false);
+        updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
+        updateConnectButton(false);
+
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+
+                updateConnectButton(true);
+                updateProgressBar(false);
+                updateStatusMessage("Ready to connect again");
+            }
+        }, 2000);
+
+
+    }
 
 
     public void enableNotifications(UUID serviceUUID, UUID charUUID) {
@@ -555,7 +618,6 @@ public class MainActivity extends AppCompatActivity {
         mBleWrapper.writeDataToCharacteristic(c, value);
 
     }
-
 
 
     public boolean checkSensor() {
@@ -616,29 +678,24 @@ public class MainActivity extends AppCompatActivity {
 
         if (checkSensor()) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-        } // Else sensor values are too small - will not write
+        } // else sensor values are too small - will not write
 
     }
 
 
-    public void changeDirection1(int direction, boolean checkSensor) {
+    private void updateConnectButton(final boolean status) {
 
-        mDirection = direction;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
 
-        if(checkSensor) {
-            if (checkSensor()) {
-                writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-            } // Else sensor values are too small - will not write
-        } else {
-            writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-        }
+                ActionMenuItemView button = (ActionMenuItemView) findViewById(R.id.action_connect);
+                button.setEnabled(status);
 
+            }
+        });
 
     }
-
-
-
-
 
 
     private void updateForwardButton(final boolean status) {
@@ -676,24 +733,11 @@ public class MainActivity extends AppCompatActivity {
                 Button buttonBackward = (Button) findViewById(R.id.button_direction_backward);
                 buttonBackward.setEnabled(status);
 
-
             }
         });
 
     }
 
-
-    private void updateUltrasoundSensorGraphic(final int id) {
-
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                TextView textView = (TextView) findViewById(id);
-                textView.setBackgroundResource(R.drawable.rect_grey);
-            }
-        });
-
-    }
 
 
     private void updateUltrasoundSensorGraphic(final int id, final int colour) {
@@ -741,8 +785,6 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     progressBar.setVisibility(ProgressBar.INVISIBLE);
                 }
-
-
             }
         });
     }
@@ -756,17 +798,9 @@ public class MainActivity extends AppCompatActivity {
 
                 TextView textView = (TextView) findViewById(R.id.textview_connection_status);
                 textView.setText(message);
-
             }
         });
     }
-
-
-
-
-
-
-
 
 
 
@@ -849,12 +883,5 @@ public class MainActivity extends AppCompatActivity {
             startActivity(enableBT);
         }
     }
-
-
-
-
-
-
-
 
 }

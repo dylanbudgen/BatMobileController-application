@@ -74,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     // Variables for scanning popup
     private FoundDeviceArrayAdapter scanningListviewAdapter;
     private ArrayList<FoundDevice> devicesList = new ArrayList<>();
+    private PopupWindow mPopupWindow = null;
 
     // States
     private String mState = "";
@@ -310,6 +311,8 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        checkBluetoothStatus();
     }
 
     @Override
@@ -332,12 +335,16 @@ public class MainActivity extends AppCompatActivity {
     public void onPause() {
         super.onPause();
 
-        mBleWrapper.stopScanning();
-        disconnect();
-        mBleWrapper.close();
+            mBleWrapper.stopScanning();
+            disconnect();
+            mBleWrapper.close();
 
-        // Reset the app
-        finish();
+
+
+        if  (mPopupWindow != null) {
+            mPopupWindow.dismiss();
+        }
+
     }
 
     // Required to set up toolbar and add buttons from res/main_menu/main_menu.xmlu.xml
@@ -396,79 +403,83 @@ public class MainActivity extends AppCompatActivity {
         if(mState.equals("SCANNING")) {
             // The scanning window is already open.
         } else {
-            // Check if Bluetooth is enabled
+
+            // Reset bluetooth if already connected, so user can connect again
+            if (mBleWrapper.isConnected()) {
+                updateProgressBar(true);
+                updateStatusMessage(getString(R.string.disconnecting));
+                disconnect();
+            }
+
+            // Permissions for fine location called when user wishes to use Bluetooth
+            checkBluetoothPermissions();
+
             if (!mBleWrapper.isBtEnabled()) {
-                // Bluetooth is not enabled.
-                Intent enableBT = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                startActivity(enableBT);
-            } else {
+                Toast.makeText(this, "This application requires Bluetooth", Toast.LENGTH_SHORT).show();
+                finish();
+            }
 
-                // Permissions for fine location called when user wishes to use Bluetooth
-                checkBluetoothPermissions();
 
-                // Check if Bluetooth is on
-                checkBluetoothStatus();
+            // Already connected to something
+            if (mBleWrapper.isConnected()) {
+                Log.d("DEBUG", "000P Already connected on scanning check");
 
-                // Already connected to something
-                if (mBleWrapper.isConnected()) {
-                    Log.d("DEBUG", "000P Already connected on scanning check");
-
-                    // Wrapper is already disconnecting
-                    if  (mState.equals("MANUAL_DISCONNECT")) {
-                        Log.d("DEBUG", "000P Disconnect is already in progress");
-                    } else {
-                        disconnect();
-                    }
-
-                    return;
+                // Wrapper is already disconnecting
+                if  (mState.equals("MANUAL_DISCONNECT")) {
+                    Log.d("DEBUG", "000P Disconnect is already in progress");
+                } else {
+                    disconnect();
                 }
 
-                // Update the state to prevent user opening multiple windows
-                mState = "SCANNING";
+                return;
+            }
 
-                ConstraintLayout layout = (ConstraintLayout) findViewById(R.id.main_activity);
-                LayoutInflater inflater = (LayoutInflater) this.getSystemService(LAYOUT_INFLATER_SERVICE);
+            // Update the state to prevent user opening multiple windows
+            mState = "SCANNING";
 
-                // Inflate the custom layout/view
-                View customView = inflater.inflate(R.layout.popup_scanning, null, true);
+            ConstraintLayout layout = (ConstraintLayout) findViewById(R.id.main_activity);
+            LayoutInflater inflater = (LayoutInflater) this.getSystemService(LAYOUT_INFLATER_SERVICE);
 
-                // Initialize a new instance of popup window
-                final PopupWindow mPopupWindow = new PopupWindow(
-                        customView,
-                        LayoutParams.WRAP_CONTENT,
-                        LayoutParams.WRAP_CONTENT
-                );
+            // Inflate the custom layout/view
+            View customView = inflater.inflate(R.layout.popup_scanning, null, true);
 
-                // Set an elevation value for popup window
-                if (Build.VERSION.SDK_INT >= 21) {
-                    //
-                    mPopupWindow.setElevation(5.0f);
-                }
+            // Initialize a new instance of popup window
+            mPopupWindow = new PopupWindow(
+                    customView,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT
+            );
 
-                // Get a reference for the custom view close button
-                ImageButton closeButton = (ImageButton) customView.findViewById(R.id.ib_close);
+            // Set an elevation value for popup window
+            if (Build.VERSION.SDK_INT >= 21) {
 
-                // Set a click listener for the popup window close button
-                closeButton.setOnClickListener(new View.OnClickListener() {
+                mPopupWindow.setElevation(5.0f);
+            }
+
+            // Get a reference for the custom view close button
+            ImageButton closeButton = (ImageButton) customView.findViewById(R.id.ib_close);
+
+            // Set a click listener for the popup window close button
+            closeButton.setOnClickListener(new View.OnClickListener() {
 
                     @Override
                     public void onClick(View view) {
-
                         mState = "";
                         mBleWrapper.stopScanning();
                         devicesList.clear();
                         mPopupWindow.dismiss();
 
                         // Null the scanningListviewAdapter to free resources
+                        mPopupWindow = null;
                         scanningListviewAdapter = null;
                     }
-                });
+            });
 
-                // Show the popup window at the center location of root relative layout
-                mPopupWindow.showAtLocation(layout, Gravity.CENTER, 0, 0);
+            // Show the popup window at the center location of root relative layout
+            mPopupWindow.showAtLocation(layout, Gravity.CENTER, 0, 0);
 
-                // Set up the button listener for the close button
-                AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
+            // Set up the button listener for the close button
+            AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
                     public void onItemClick(AdapterView parent, View v, int position, long id) {
 
                         mState = "CONNECTING";
@@ -478,24 +489,24 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
 
-                // Set up the list adapter to update the list
-                scanningListviewAdapter = new FoundDeviceArrayAdapter(this,
+            // Set up the list adapter to update the list
+            scanningListviewAdapter = new FoundDeviceArrayAdapter(this,
                         android.R.layout.simple_list_item_2, devicesList);
 
-                ListView listView = (ListView) customView.findViewById(R.id.listView_scanning);
-                listView.setAdapter(scanningListviewAdapter);
+            ListView listView = (ListView) customView.findViewById(R.id.listView_scanning);
+            listView.setAdapter(scanningListviewAdapter);
                 listView.setOnItemClickListener(mMessageClickedHandler);
 
-                if(mBleWrapper == null) {
-                    Log.d("DEBUG", "000P Wrapper is null");
-                } else {
-                    Log.d("DEBUG", "000P Wrapper is not null");
-                }
-
-                // Start scanning
-                mBleWrapper.startScanning();
-
+            if(mBleWrapper == null) {
+                Log.d("DEBUG", "000P Wrapper is null");
+            } else {
+                Log.d("DEBUG", "000P Wrapper is not null");
             }
+
+            // Start scanning
+            mBleWrapper.startScanning();
+
+
         }
     }
 
@@ -525,8 +536,8 @@ public class MainActivity extends AppCompatActivity {
 
         mBleWrapper.diconnect();
 
-        updateProgressBar(true);
-        updateStatusMessage(getString(R.string.disconnecting));
+        //updateProgressBar(true);
+        //updateStatusMessage(getString(R.string.disconnecting));
         updateDirectionButtons(false);
         updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
         updateConnectButton(false);
@@ -845,6 +856,7 @@ public class MainActivity extends AppCompatActivity {
             // Bluetooth is not enabled.
             Intent enableBT = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivity(enableBT);
+            finish();
         }
     }
 

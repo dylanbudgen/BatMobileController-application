@@ -5,10 +5,10 @@
 
     <!-- Connection status -->
     <string name="no_connection">Press connect to start</string>
-    <string name="connecting">Connecting...</string>
+    <string name="connecting">Connecting</string>
     <string name="connected">Connected</string>
-    <string name="disconnecting">Connected</string>
-    <string name="ready">Connected</string>
+    <string name="disconnecting">Disconnecting</string>
+    <string name="ready">Press connect to start</string>
     <string name="discovering_services">Discovering services...</string>
     <string name="updating_settings">Updating settings...</string>
     <string name="disconnected">Car has disconnected</string>

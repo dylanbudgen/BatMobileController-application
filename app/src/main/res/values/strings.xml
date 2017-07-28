@@ -12,9 +12,17 @@
     <string name="discovering_services">Discovering services...</string>
     <string name="updating_settings">Updating settings...</string>
     <string name="disconnected">Car has disconnected</string>
-    <string name="error_connecting">Error occurred. Please restart application.</string>
 
-    <!-- Strings related to Settings -->
+    <!-- Errors -->
+    <string name="error_connecting">Error occurred. Please restart application.</string>
+    <string name="wrong_device">Device selected is not BatMobile. Please try again.</string>
+    <string name="error_restarting">Error occured. Closing application</string>
+    <string name="BL_off">This application requires Bluetooth to be turned on</string>
+
+    <!-- Permissions -->
+    <string name="permissions_rejected">Application needs location permission to use Bluetooth</string>
+
+    <!-- Settings -->
     <string name="sound_group">Sound settings</string>
     <string name="sound_title">Sound</string>
     <string name="sound_summary">Turn off warning sounds</string>

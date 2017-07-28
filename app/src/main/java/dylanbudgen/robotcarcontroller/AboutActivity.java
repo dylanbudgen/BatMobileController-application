@@ -1,11 +1,14 @@
 package dylanbudgen.robotcarcontroller;
 
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
+import android.widget.TextView;
 
 public class AboutActivity extends AppCompatActivity {
 
@@ -23,10 +26,11 @@ public class AboutActivity extends AppCompatActivity {
         myToolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("DEBUG", "000P First back print");
                 onBackPressed();
             }
         });
+
+        setVersionInfo();
     }
 
 
@@ -42,6 +46,27 @@ public class AboutActivity extends AppCompatActivity {
     public boolean onSupportNavigateUp() {
         onBackPressed();
         return true;
+    }
+
+    private void setVersionInfo() {
+
+        try {
+            PackageInfo pInfo = this.getPackageManager().getPackageInfo(getPackageName(), 0);
+            final String version = pInfo.versionName;
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+
+                    TextView textViewVersion = (TextView) findViewById(R.id.textView_version);
+                    textViewVersion.setText("v" + version);
+                }
+            });
+
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+
     }
 
 }

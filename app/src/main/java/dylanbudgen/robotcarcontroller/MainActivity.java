@@ -9,9 +9,14 @@ import android.bluetooth.BluetoothGattService;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -25,6 +30,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewGroupOverlay;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -46,12 +53,15 @@ import dylanbudgen.robotcarcontroller.bluetooth.BleWrapperUiCallbacks;
 
 public class MainActivity extends AppCompatActivity {
 
+    // BatMobile Bluetooth address
+    private static final String BATMOBILE_ADDRESS = "CA:2F:AE:13:FD:41";
+
     // Code for permissions
     private static final int REQUEST_CODE_ACCESS_FINE_LOCATION = 10;
 
     // Distance until avoidance is detected in cm
-    private final int ERROR_DISTANCE_FORWARD = 10;
-    private final int ERROR_DISTANCE_SIDES = 10;
+    private final int ERROR_DISTANCE_FORWARD = 15;
+    private final int ERROR_DISTANCE_SIDES = 15;
 
     // Directions
     private final int STOP = 0;
@@ -70,6 +80,12 @@ public class MainActivity extends AppCompatActivity {
 
     // BL wrapper
     private BleWrapper mBleWrapper = null;
+
+    // Media player for error sounds
+    MediaPlayer errorSoundPlayer;
+
+    // Sound enabled setting
+    boolean soundEnabled;
 
     // Variables for scanning popup
     private FoundDeviceArrayAdapter scanningListviewAdapter;
@@ -163,7 +179,6 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // Device was told to disconnect but attempted to connect again
-                Log.d("DEBUG", "000P On services found mState = " + mState);
                 if (mState.equals("MANUAL_DISCONNECT")) {
                     return;
                 }
@@ -234,18 +249,15 @@ public class MainActivity extends AppCompatActivity {
                     case "SET_SPEED_SETTING" :
                         // Now enable the left sensor, then the front sensor
                         mState = "ULTRASOUND_FRONT_ENABLE";
-                        Log.d("DEBUG", "000P Nots for left. mState = " + mState);
                         enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_LEFT);
                         break;
                     case "ULTRASOUND_FRONT_ENABLE" :
                         // Now enable front sensor, then the right sensor
                         mState = "ULTRASOUND_RIGHT_ENABLE";
-                        Log.d("DEBUG", "000P Nots for front. mState = " + mState);
                         enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_FRONT);
                         break;
                     case "ULTRASOUND_RIGHT_ENABLE" :
                         mState = "UPDATE_PROGRESS_BAR";
-                        Log.d("DEBUG", "000P Nots for right. mState = " + mState);;
                         enableNotifications(UUID_ULTRASOUND_SERVICE, UUID_ULTRASOUND_RIGHT);
                         break;
                     case "UPDATE_PROGRESS_BAR" :
@@ -328,6 +340,14 @@ public class MainActivity extends AppCompatActivity {
         devicesList.clear();
         mBleWrapper.initialize();
 
+        // Initialise media player
+        errorSoundPlayer = MediaPlayer.create(this, R.raw.beep_censor);
+        errorSoundPlayer.setLooping(false);
+
+
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        soundEnabled = sharedPref.getBoolean("sound_switch", false);
+
     }
 
 
@@ -339,11 +359,13 @@ public class MainActivity extends AppCompatActivity {
             disconnect();
             mBleWrapper.close();
 
-
-
         if  (mPopupWindow != null) {
             mPopupWindow.dismiss();
         }
+
+        // Media errorSoundPlayer deinitiation
+        errorSoundPlayer.release();
+        errorSoundPlayer = null;
 
     }
 
@@ -362,19 +384,16 @@ public class MainActivity extends AppCompatActivity {
 
             case R.id.action_connect:
                 // Connect button pressed
-                Log.d("DEBUG", "000P Connect button pressed");
                 scan();
                 return true;
 
             case R.id.action_settings:
                 // Settings button pressed
-                Log.d("DEBUG", "000P Settings button pressed");
                 showSettings();
                 return true;
 
             case R.id.action_about:
                 // About button pressed
-                Log.d("DEBUG", "000P About button pressed");
                 showAbout();
                 return true;
 
@@ -404,34 +423,20 @@ public class MainActivity extends AppCompatActivity {
             // The scanning window is already open.
         } else {
 
+            // Permissions for fine location called when user wishes to use Bluetooth
+            checkBluetoothPermissions();
+
             // Reset bluetooth if already connected, so user can connect again
             if (mBleWrapper.isConnected()) {
                 updateProgressBar(true);
                 updateStatusMessage(getString(R.string.disconnecting));
                 disconnect();
+                return;
             }
-
-            // Permissions for fine location called when user wishes to use Bluetooth
-            checkBluetoothPermissions();
 
             if (!mBleWrapper.isBtEnabled()) {
-                Toast.makeText(this, "This application requires Bluetooth", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.BL_off, Toast.LENGTH_SHORT).show();
                 finish();
-            }
-
-
-            // Already connected to something
-            if (mBleWrapper.isConnected()) {
-                Log.d("DEBUG", "000P Already connected on scanning check");
-
-                // Wrapper is already disconnecting
-                if  (mState.equals("MANUAL_DISCONNECT")) {
-                    Log.d("DEBUG", "000P Disconnect is already in progress");
-                } else {
-                    disconnect();
-                }
-
-                return;
             }
 
             // Update the state to prevent user opening multiple windows
@@ -452,12 +457,18 @@ public class MainActivity extends AppCompatActivity {
 
             // Set an elevation value for popup window
             if (Build.VERSION.SDK_INT >= 21) {
-
                 mPopupWindow.setElevation(5.0f);
             }
 
+            // Set open/close animation
+            mPopupWindow.setAnimationStyle(R.style.PopUp_Animation);
+
             // Get a reference for the custom view close button
             ImageButton closeButton = (ImageButton) customView.findViewById(R.id.ib_close);
+
+            // Dim background
+            final ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
+            applyDim(viewGroup, 0.5f);
 
             // Set a click listener for the popup window close button
             closeButton.setOnClickListener(new View.OnClickListener() {
@@ -468,8 +479,9 @@ public class MainActivity extends AppCompatActivity {
                         mBleWrapper.stopScanning();
                         devicesList.clear();
                         mPopupWindow.dismiss();
+                        clearDim(viewGroup);
 
-                        // Null the scanningListviewAdapter to free resources
+                        // Null the scanningListviewAdapter and PopupWindow to free resources
                         mPopupWindow = null;
                         scanningListviewAdapter = null;
                     }
@@ -485,6 +497,9 @@ public class MainActivity extends AppCompatActivity {
                         mState = "CONNECTING";
                         mBleWrapper.stopScanning();
                         mPopupWindow.dismiss();
+                        ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
+                        clearDim(viewGroup);
+
                         connect(devicesList.get(position).getDeviceAddress());
                     }
                 };
@@ -497,27 +512,45 @@ public class MainActivity extends AppCompatActivity {
             listView.setAdapter(scanningListviewAdapter);
                 listView.setOnItemClickListener(mMessageClickedHandler);
 
-            if(mBleWrapper == null) {
-                Log.d("DEBUG", "000P Wrapper is null");
-            } else {
-                Log.d("DEBUG", "000P Wrapper is not null");
-            }
-
             // Start scanning
             mBleWrapper.startScanning();
-
 
         }
     }
 
 
+    /*
+     *  Method written by Markus Rubey - https://stackoverflow.com/users/1399597/markus-rubey
+     */
+    public static void applyDim(@NonNull ViewGroup parent, float dimAmount){
+        Drawable dim = new ColorDrawable(Color.BLACK);
+        dim.setBounds(0, 0, parent.getWidth(), parent.getHeight());
+        dim.setAlpha((int) (255 * dimAmount));
+
+        ViewGroupOverlay overlay = parent.getOverlay();
+        overlay.add(dim);
+    }
+
+    /*
+     *  Method written by Markus Rubey - https://stackoverflow.com/users/1399597/markus-rubey
+     */
+    public static void clearDim(@NonNull ViewGroup parent) {
+        ViewGroupOverlay overlay = parent.getOverlay();
+        overlay.clear();
+    }
+
     public void connect(String address) {
 
         Log.d("DEBUG", "000P Connect to: " + address);
 
+        if (!address.equals(BATMOBILE_ADDRESS)) {
+            updateStatusMessage(getString(R.string.wrong_device));
+            return;
+        }
+
         if (mBleWrapper.isConnected()) {
-            Log.d("DEBUG", "000P Already connected on connect");
-            updateStatusMessage(getString(R.string.error_connecting));
+            Toast.makeText(this, R.string.error_restarting, Toast.LENGTH_SHORT).show();
+            finish();
 
         } else {
             Log.d("DEBUG", "000P Connecting");
@@ -536,8 +569,6 @@ public class MainActivity extends AppCompatActivity {
 
         mBleWrapper.diconnect();
 
-        //updateProgressBar(true);
-        //updateStatusMessage(getString(R.string.disconnecting));
         updateDirectionButtons(false);
         updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
         updateConnectButton(false);
@@ -558,19 +589,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void enableNotifications(UUID serviceUUID, UUID charUUID) {
 
-        Log.d("DEBUG", "000P Setting on notifications");
-        Log.d("DEBUG", "000P for: " + charUUID);
+        // Log.d("DEBUG", "000P Setting on notifications");
 
         BluetoothGatt gatt;
         BluetoothGattCharacteristic c;
-
-        if(!mBleWrapper.isConnected()) {
-            // TODO WARN USER and make method ************************************************
-            Log.d("DEBUG", "000P Not connected");
-            return;
-        }
-
-        // Set on notifications
         gatt = mBleWrapper.getGatt();
         c = gatt.getService(serviceUUID).getCharacteristic(charUUID);
         mBleWrapper.setNotificationForCharacteristic(c, true);
@@ -582,7 +604,6 @@ public class MainActivity extends AppCompatActivity {
 
         mState = "SET_SPEED_SETTING";
 
-        // Set the settings for speed
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         int speed = Integer.parseInt(sharedPref.getString("speed", "2"));
         Log.d("DEBUG", "000P Changing settings, value is: " + speed);
@@ -640,17 +661,23 @@ public class MainActivity extends AppCompatActivity {
             updateForwardButton(false);
 
             if (mDirection == FORWARD) {
+                if (soundEnabled) {
+                    errorSoundPlayer.start();
+                }
                 changeDirection(STOP);
-                return status;
+                return false;
             }
 
-            // direction is not forward, so can proceed
+            // direction is not forward, so car can proceed in current direction
             return true;
-        }
 
-        // sensors are all fine, so return true and enable forward button
-        updateForwardButton(true);
-        return true;
+        } else {
+
+            // sensors are all fine, so return true and enable forward button
+            updateForwardButton(true);
+            return true;
+
+        }
     }
 
     public void changeDirection(int direction) {
@@ -660,11 +687,10 @@ public class MainActivity extends AppCompatActivity {
         if (direction == STOP) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
             return;
-        }
 
-        if (checkSensor()) {
+        } else if (checkSensor()) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-        } // else sensor values are too small - will not write
+        }
 
     }
 
@@ -786,25 +812,31 @@ public class MainActivity extends AppCompatActivity {
     private void checkBluetoothPermissions() {
 
         if (Build.VERSION.SDK_INT > 22) {  // Device needs runtime permissions
-            Log.d("DEBUG", "000P Device needs runtime permissions.");
 
             // Checking if permission for location is already set
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                Log.d("DEBUG", "000P Permission granted.");
             } else {
-                Log.d("DEBUG", "000P Permission not granted");
-
-                if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                    Toast.makeText(this, "The app needs location permission for Bluetooth search", Toast.LENGTH_SHORT).show();
-                }
-
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ACCESS_FINE_LOCATION);
             }
-
-        } else { // Device doesn't need runtime permissions
-            Log.d("DEBUG", "000P Device does not need runtime permissions.");
         }
 
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+
+        if (requestCode == REQUEST_CODE_ACCESS_FINE_LOCATION) {
+            // Permission for location recieved
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("DEBUG", "000P User Permission granted.");
+            } else {
+                Log.d("DEBUG", "000P User Permission not granted");
+                Toast.makeText(this, R.string.permissions_rejected, Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        } else {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
     }
 
     private void setupButtonListener(int buttonName, final int direction) {
@@ -834,21 +866,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 
-        if (requestCode == REQUEST_CODE_ACCESS_FINE_LOCATION) {
-            // Permission for location recieved
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d("DEBUG", "000P User Permission granted.");
-            } else {
-                Log.d("DEBUG", "000P User Permission not granted");
-                Toast.makeText(this, "Permisson not granted. Permission is needed to use Bluetooth.", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        }
-    }
 
     private void checkBluetoothStatus() {
 

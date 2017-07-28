@@ -13,6 +13,8 @@
     android:background="@drawable/rounded_corners"
 
 
+
+
     >
     <ImageButton
         android:id="@+id/ib_close"

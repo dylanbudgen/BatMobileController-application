@@ -6,6 +6,7 @@
 
         <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->
         <ListPreference
+            android:id="@+id/speed_setting"
             android:defaultValue="2"
             android:entries="@array/speed_titles"
             android:entryValues="@array/speed_values"
@@ -22,6 +23,7 @@
         android:key="sound_settings">
 
         <SwitchPreference
+            android:id="@+id/sound_setting"
             android:defaultValue="true"
             android:key="sound_switch"
             android:summary="@string/sound_summary"

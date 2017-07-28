@@ -24,7 +24,6 @@ public class SettingsActivity extends AppCompatActivity {
         myToolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("DEBUG", "000P First back print");
                 onBackPressed();
             }
         });

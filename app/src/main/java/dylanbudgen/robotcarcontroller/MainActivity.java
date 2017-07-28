@@ -46,6 +46,7 @@ import dylanbudgen.robotcarcontroller.bluetooth.BleWrapperUiCallbacks;
 
 public class MainActivity extends AppCompatActivity {
 
+    // Code for permissions
     private static final int REQUEST_CODE_ACCESS_FINE_LOCATION = 10;
 
     // Distance until avoidance is detected in cm
@@ -73,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
     // Variables for scanning popup
     private FoundDeviceArrayAdapter scanningListviewAdapter;
     private ArrayList<FoundDevice> devicesList = new ArrayList<>();
-    private ScannerPopup scanner = null;
 
     // States
     private String mState = "";
@@ -105,6 +105,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar myToolbar = (Toolbar) findViewById(R.id.main_toolbar);
         setSupportActionBar(myToolbar);
 
+        // Set up button listeners
         setupButtonListener(R.id.button_direction_stop, 0);
         setupButtonListener(R.id.button_direction_forward, 1);
         setupButtonListener(R.id.button_direction_left, 2);
@@ -166,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                updateStatusMessage("Updating settings...");
+                updateStatusMessage(getString(R.string.updating_settings));
                 setSpeedSetting();
             }
 
@@ -249,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
                     case "UPDATE_PROGRESS_BAR" :
                         mState = "CONNECTED";
                         updateProgressBar(false);
-                        updateStatusMessage("Connected");
+                        updateStatusMessage(getString(R.string.connected));
                         updateDirectionButtons(true);
                         updateUltrasoundGraphics(RECT_GREEN, CIRCLE_GREEN);
                         break;
@@ -270,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
 
                 mBleWrapper.diconnect();
 
-                updateStatusMessage("Error occurred. Please try again.");
+                updateStatusMessage(getString(R.string.error_connecting));
                 updateProgressBar(false);
 
                 Log.d("DEBUG", "000P uiFailedWrite");
@@ -294,7 +295,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!mState.equals("MANUAL_DISCONNECT")) {
 
                     Log.d("DEBUG", "000P Device disconnected");
-                    updateStatusMessage("Device has disconnected");
+                    updateStatusMessage(getString(R.string.disconnected));
                     updateProgressBar(false);
                     updateDirectionButtons(false);
                     updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
@@ -303,16 +304,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // TODO ENABLE AGAIN AFTER FINISHED TESTING WITH EMULATOR *************************************
-        /*
         // Check if BLE is supported by the device
         if(!mBleWrapper.checkBleHardwareAvailable()) {
             Toast.makeText(this, "No BLE compatible hardware detected",
                     Toast.LENGTH_SHORT).show();
             finish();
         }
-        */
-
     }
 
     @Override
@@ -320,7 +317,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         mState = "";
-        updateStatusMessage("Press connect to start");
+        updateStatusMessage(getString(R.string.no_connection));
         updateProgressBar(false);
         updateDirectionButtons(false);
         updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
@@ -335,12 +332,12 @@ public class MainActivity extends AppCompatActivity {
     public void onPause() {
         super.onPause();
 
-        // TODO CLOSE THE POPUP WINDOW IF APP CLOSES, THIS WILL SCREW THIS UP OTHERWISE
-
         mBleWrapper.stopScanning();
         disconnect();
         mBleWrapper.close();
 
+        // Reset the app
+        finish();
     }
 
     // Required to set up toolbar and add buttons from res/main_menu/main_menu.xmlu.xml
@@ -467,22 +464,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
 
-                        /*
-                            public void showAtLocation (View parent, int gravity, int x, int y)
-                                Display the content view in a popup window at the specified location. If the
-                                popup window cannot fit on screen, it will be clipped.
-                                Learn WindowManager.LayoutParams for more information on how gravity and the x
-                                and y parameters are related. Specifying a gravity of NO_GRAVITY is similar
-                                to specifying Gravity.LEFT | Gravity.TOP.
-
-                            Parameters
-                                parent : a parent view to get the getWindowToken() token from
-                                gravity : the gravity which controls the placement of the popup window
-                                x : the popup's x location offset
-                                y : the popup's y location offset
-                        */
-
-                // Finally, show the popup window at the center location of root relative layout
+                // Show the popup window at the center location of root relative layout
                 mPopupWindow.showAtLocation(layout, Gravity.CENTER, 0, 0);
 
                 // Set up the button listener for the close button
@@ -513,12 +495,8 @@ public class MainActivity extends AppCompatActivity {
                 // Start scanning
                 mBleWrapper.startScanning();
 
-
             }
         }
-
-
-
     }
 
 
@@ -528,12 +506,12 @@ public class MainActivity extends AppCompatActivity {
 
         if (mBleWrapper.isConnected()) {
             Log.d("DEBUG", "000P Already connected on connect");
-            updateStatusMessage("Error occured. Please restart application.");
+            updateStatusMessage(getString(R.string.error_connecting));
 
         } else {
             Log.d("DEBUG", "000P Connecting");
             updateProgressBar(true);
-            updateStatusMessage("Connecting...");
+            updateStatusMessage(getString(R.string.connecting));
             mBleWrapper.connect(address);
         }
     }
@@ -548,7 +526,7 @@ public class MainActivity extends AppCompatActivity {
         mBleWrapper.diconnect();
 
         updateProgressBar(true);
-        updateStatusMessage("Disconnecting...");
+        updateStatusMessage(getString(R.string.disconnecting));
         updateDirectionButtons(false);
         updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
         updateConnectButton(false);
@@ -560,13 +538,12 @@ public class MainActivity extends AppCompatActivity {
 
                 updateConnectButton(true);
                 updateProgressBar(false);
-                updateStatusMessage("Ready to connect again");
+                updateStatusMessage(getString(R.string.ready));
             }
         }, 2000);
 
 
     }
-
 
     public void enableNotifications(UUID serviceUUID, UUID charUUID) {
 
@@ -575,7 +552,6 @@ public class MainActivity extends AppCompatActivity {
 
         BluetoothGatt gatt;
         BluetoothGattCharacteristic c;
-
 
         if(!mBleWrapper.isConnected()) {
             // TODO WARN USER and make method ************************************************
@@ -587,7 +563,6 @@ public class MainActivity extends AppCompatActivity {
         gatt = mBleWrapper.getGatt();
         c = gatt.getService(serviceUUID).getCharacteristic(charUUID);
         mBleWrapper.setNotificationForCharacteristic(c, true);
-
     }
 
     public void setSpeedSetting() {
@@ -648,7 +623,7 @@ public class MainActivity extends AppCompatActivity {
             updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RECT_GREEN);
         }
 
-        // sensors are triggered so disable forward button
+        // Sensors are triggered so disable forward button
         if (!status) {
 
             updateForwardButton(false);
@@ -707,7 +682,6 @@ public class MainActivity extends AppCompatActivity {
                 Button buttonForward = (Button) findViewById(R.id.button_direction_forward);
                 buttonForward.setEnabled(status);
 
-
             }
         });
     }
@@ -735,10 +709,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
     }
-
-
 
     private void updateUltrasoundSensorGraphic(final int id, final int colour) {
 
@@ -771,7 +742,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
     private void updateProgressBar(final boolean visibility) {
 
         runOnUiThread(new Runnable() {
@@ -802,10 +772,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
-
-
-
     private void checkBluetoothPermissions() {
 
         if (Build.VERSION.SDK_INT > 22) {  // Device needs runtime permissions
@@ -829,8 +795,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
-
-
 
     private void setupButtonListener(int buttonName, final int direction) {
 

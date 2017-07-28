@@ -4,22 +4,23 @@
 
 
     <!-- Connection status -->
-    <string name="no_connection">Not connected</string>
+    <string name="no_connection">Press connect to start</string>
     <string name="connecting">Connecting...</string>
     <string name="connected">Connected</string>
+    <string name="disconnecting">Connected</string>
+    <string name="ready">Connected</string>
     <string name="discovering_services">Discovering services...</string>
-    <string name="disconnected">Car has
-        disconnected</string>
+    <string name="updating_settings">Updating settings...</string>
+    <string name="disconnected">Car has disconnected</string>
+    <string name="error_connecting">Error occurred. Please restart application.</string>
 
     <!-- Strings related to Settings -->
     <string name="sound_group">Sound settings</string>
     <string name="sound_title">Sound</string>
     <string name="sound_summary">Turn off warning sounds</string>
-
     <string name="speed_group">Car control settings</string>
     <string name="speed_title">Speed</string>
     <string name="speed_summary">Set the speed of the car</string>
-
 
     <string-array name="speed_titles">
         <item>Low</item>

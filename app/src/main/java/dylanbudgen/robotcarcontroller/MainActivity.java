@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
                     String deviceName = device.getName();
                     String deviceAddress = device.getAddress().toString();
 
-                    Log.d("DEBUG", "000P uiDeviceFound: " + deviceName + ", " + rssi);
+                    //Log.d("DEBUG", "000P uiDeviceFound: " + deviceName + ", " + rssi);
 
                     // Checking if device has already been found
                     for (FoundDevice foundDevice : devicesList) {
@@ -166,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
                                             BluetoothDevice device,
                                             List<BluetoothGattService> services) {
 
+                /*
                 for (BluetoothGattService service : services) {
                     String serviceName = BleNamesResolver.resolveUuid(service.getUuid().toString());
 
@@ -176,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
                         Log.d("DEBUG", "000P Found characteristic: " + " with UUID: "
                                 + c.getUuid().toString());
                     }
-                }
+                } */
 
                 // Device was told to disconnect but attempted to connect again
                 if (mState.equals("MANUAL_DISCONNECT")) {
@@ -344,10 +345,8 @@ public class MainActivity extends AppCompatActivity {
         errorSoundPlayer = MediaPlayer.create(this, R.raw.beep_censor);
         errorSoundPlayer.setLooping(false);
 
-
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         soundEnabled = sharedPref.getBoolean("sound_switch", false);
-
     }
 
 
@@ -360,6 +359,8 @@ public class MainActivity extends AppCompatActivity {
             mBleWrapper.close();
 
         if  (mPopupWindow != null) {
+            ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
+            clearDim(viewGroup);
             mPopupWindow.dismiss();
         }
 
@@ -424,7 +425,11 @@ public class MainActivity extends AppCompatActivity {
         } else {
 
             // Permissions for fine location called when user wishes to use Bluetooth
-            checkBluetoothPermissions();
+            if (!checkBluetoothPermissions()) {
+                return;
+            }
+
+            Log.d("DEBUG", "000P Checking HERE");
 
             // Reset bluetooth if already connected, so user can connect again
             if (mBleWrapper.isConnected()) {
@@ -541,8 +546,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void connect(String address) {
 
-        Log.d("DEBUG", "000P Connect to: " + address);
-
         if (!address.equals(BATMOBILE_ADDRESS)) {
             updateStatusMessage(getString(R.string.wrong_device));
             return;
@@ -600,13 +603,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void setSpeedSetting() {
 
-        Log.d("DEBUG", "000P Settings write");
-
         mState = "SET_SPEED_SETTING";
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
         int speed = Integer.parseInt(sharedPref.getString("speed", "2"));
-        Log.d("DEBUG", "000P Changing settings, value is: " + speed);
 
         writeToCharacteristic(UUID_SPEED_SERVICE, UUID_SPEED_WRITE, speed);
     }
@@ -809,7 +809,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void checkBluetoothPermissions() {
+    private boolean checkBluetoothPermissions() {
 
         if (Build.VERSION.SDK_INT > 22) {  // Device needs runtime permissions
 
@@ -817,9 +817,10 @@ public class MainActivity extends AppCompatActivity {
             if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             } else {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE_ACCESS_FINE_LOCATION);
+                return false;
             }
         }
-
+        return true;
     }
 
     @Override
@@ -828,11 +829,8 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQUEST_CODE_ACCESS_FINE_LOCATION) {
             // Permission for location recieved
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d("DEBUG", "000P User Permission granted.");
             } else {
-                Log.d("DEBUG", "000P User Permission not granted");
                 Toast.makeText(this, R.string.permissions_rejected, Toast.LENGTH_SHORT).show();
-                finish();
             }
         } else {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -850,14 +848,14 @@ public class MainActivity extends AppCompatActivity {
                 switch (event.getAction()) {
 
                     case MotionEvent.ACTION_DOWN:
-                        Log.d("DEBUG", "00P Button down " + " Direction: " + direction);
+                        //Log.d("DEBUG", "00P Button down " + " Direction: " + direction);
 
                         mDirection = direction;
                         changeDirection(direction);
                         break;
 
                     case MotionEvent.ACTION_UP:
-                        Log.d("DEBUG", "00P Button up " + " Direction: " + direction);
+                        //Log.d("DEBUG", "00P Button up " + " Direction: " + direction);
                         changeDirection(STOP);
                         break;
                 }

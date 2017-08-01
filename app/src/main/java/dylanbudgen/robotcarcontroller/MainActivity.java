@@ -359,9 +359,11 @@ public class MainActivity extends AppCompatActivity {
             mBleWrapper.close();
 
         if  (mPopupWindow != null) {
+            devicesList.clear();
+            mPopupWindow.dismiss();
             ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
             clearDim(viewGroup);
-            mPopupWindow.dismiss();
+
         }
 
         // Media errorSoundPlayer deinitiation
@@ -501,6 +503,7 @@ public class MainActivity extends AppCompatActivity {
 
                         mState = "CONNECTING";
                         mBleWrapper.stopScanning();
+                        devicesList.clear();
                         mPopupWindow.dismiss();
                         ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
                         clearDim(viewGroup);

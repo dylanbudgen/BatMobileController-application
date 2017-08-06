@@ -170,11 +170,11 @@ public class MainActivity extends AppCompatActivity {
                 for (BluetoothGattService service : services) {
                     String serviceName = BleNamesResolver.resolveUuid(service.getUuid().toString());
 
-                    Log.d("DEBUG", "000P Found service: " + serviceName + " with UUID: "
+                    //Log.d("DEBUG", "000P Found service: " + serviceName + " with UUID: "
                             + service.getUuid().toString());
 
                     for (BluetoothGattCharacteristic c : service.getCharacteristics()) {
-                        Log.d("DEBUG", "000P Found characteristic: " + " with UUID: "
+                        //Log.d("DEBUG", "000P Found characteristic: " + " with UUID: "
                                 + c.getUuid().toString());
                     }
                 } */
@@ -243,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
 
                 super.uiSuccessfulWrite(gatt, device, service, ch, description);
 
-                Log.d("DEBUG", "000P uiSuccessfulWrite.");
+                // //Log.d("DEBUG", "000P uiSuccessfulWrite.");
 
                 // Chain reaction for the enabling of notifcations
                 switch (mState) {
@@ -288,14 +288,13 @@ public class MainActivity extends AppCompatActivity {
                 updateStatusMessage(getString(R.string.error_connecting));
                 updateProgressBar(false);
 
-                Log.d("DEBUG", "000P uiFailedWrite");
+                // //Log.d("DEBUG", "000P uiFailedWrite");
             }
 
 
             @Override
             public void uiDeviceConnected(BluetoothGatt gatt, BluetoothDevice device) {
                 super.uiDeviceConnected(gatt, device);
-
 
                 return;
             }
@@ -308,7 +307,7 @@ public class MainActivity extends AppCompatActivity {
                 // Device has disconnected unexpectedly - excepted disconnections handled in disconnect()
                 if (!mState.equals("MANUAL_DISCONNECT")) {
 
-                    Log.d("DEBUG", "000P Device disconnected");
+                    // //Log.d("DEBUG", "000P Device disconnected");
                     updateStatusMessage(getString(R.string.disconnected));
                     updateProgressBar(false);
                     updateDirectionButtons(false);
@@ -316,6 +315,7 @@ public class MainActivity extends AppCompatActivity {
                     mState = "";
                 }
             }
+
         });
 
         // Check if BLE is supported by the device
@@ -366,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
 
-        // Media errorSoundPlayer deinitiation
+        // Media errorSoundPlayer release
         errorSoundPlayer.release();
         errorSoundPlayer = null;
 
@@ -430,8 +430,6 @@ public class MainActivity extends AppCompatActivity {
             if (!checkBluetoothPermissions()) {
                 return;
             }
-
-            Log.d("DEBUG", "000P Checking HERE");
 
             // Reset bluetooth if already connected, so user can connect again
             if (mBleWrapper.isConnected()) {
@@ -497,18 +495,17 @@ public class MainActivity extends AppCompatActivity {
             // Show the popup window at the center location of root relative layout
             mPopupWindow.showAtLocation(layout, Gravity.CENTER, 0, 0);
 
-            // Set up the button listener for the close button
+            // Set up the button listener for connecting
             AdapterView.OnItemClickListener mMessageClickedHandler = new AdapterView.OnItemClickListener() {
                     public void onItemClick(AdapterView parent, View v, int position, long id) {
 
-                        mState = "CONNECTING";
                         mBleWrapper.stopScanning();
-                        devicesList.clear();
                         mPopupWindow.dismiss();
                         ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
                         clearDim(viewGroup);
 
                         connect(devicesList.get(position).getDeviceAddress());
+                        devicesList.clear();
                     }
                 };
 
@@ -559,7 +556,8 @@ public class MainActivity extends AppCompatActivity {
             finish();
 
         } else {
-            Log.d("DEBUG", "000P Connecting");
+            //Log.d("DEBUG", "000P Connecting");
+            mState = "CONNECTING";
             updateProgressBar(true);
             updateStatusMessage(getString(R.string.connecting));
             mBleWrapper.connect(address);
@@ -595,7 +593,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void enableNotifications(UUID serviceUUID, UUID charUUID) {
 
-        // Log.d("DEBUG", "000P Setting on notifications");
+        // //Log.d("DEBUG", "000P Setting on notifications");
 
         BluetoothGatt gatt;
         BluetoothGattCharacteristic c;
@@ -614,13 +612,13 @@ public class MainActivity extends AppCompatActivity {
         writeToCharacteristic(UUID_SPEED_SERVICE, UUID_SPEED_WRITE, speed);
     }
 
-    public void writeToCharacteristic(UUID serivce, UUID characteristic, int writeValue) {
+    public void writeToCharacteristic(UUID service, UUID characteristic, int writeValue) {
 
         BluetoothGatt gatt;
         BluetoothGattCharacteristic c;
 
         gatt = mBleWrapper.getGatt();
-        c = gatt.getService(serivce).getCharacteristic(characteristic);
+        c = gatt.getService(service).getCharacteristic(characteristic);
 
         byte[] value = new byte[1];
 

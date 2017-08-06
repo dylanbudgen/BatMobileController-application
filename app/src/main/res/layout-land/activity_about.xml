@@ -28,7 +28,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/about_toolbar"
-        app:srcCompat="@drawable/ukc_logo" />
+        app:srcCompat="@drawable/ukc_logo1" />
 
     <TextView
         android:id="@+id/textView"

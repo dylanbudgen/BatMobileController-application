@@ -11,7 +11,7 @@
     <string name="ready">Press connect to start</string>
     <string name="discovering_services">Discovering services...</string>
     <string name="updating_settings">Updating settings...</string>
-    <string name="disconnected">Car has disconnected</string>
+    <string name="disconnected">Car has disconnected. This is most likely an issue with the car. Check all wiring is secured. You may have to restart the application and car.</string>
 
     <!-- Errors -->
     <string name="error_connecting">Error occurred. Please restart application.</string>

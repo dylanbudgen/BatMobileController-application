@@ -64,11 +64,11 @@ public class MainActivity extends AppCompatActivity {
     private final int ERROR_DISTANCE_SIDES = 15;
 
     // Directions
-    private final int STOP = 0;
-    private final int FORWARD = 1;
-    private final int LEFT = 2;
-    private final int RIGHT = 3;
-    private final int BACKWARD = 4;
+    private final static int STOP = 0;
+    private final static int FORWARD = 1;
+    private final static int LEFT = 2;
+    private final static int RIGHT = 3;
+    private final static int BACKWARD = 4;
 
     // Colours
     private final static int RECT_GREY = R.drawable.rect_grey;
@@ -123,11 +123,11 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(myToolbar);
 
         // Set up button listeners
-        setupButtonListener(R.id.button_direction_stop, 0);
-        setupButtonListener(R.id.button_direction_forward, 1);
-        setupButtonListener(R.id.button_direction_left, 2);
-        setupButtonListener(R.id.button_direction_right, 3);
-        setupButtonListener(R.id.button_direction_backward, 4);
+        setupButtonListener(R.id.button_direction_backward, BACKWARD);
+        setupButtonListener(R.id.button_direction_stop, STOP);
+        setupButtonListener(R.id.button_direction_forward, FORWARD);
+        setupButtonListener(R.id.button_direction_left, LEFT);
+        setupButtonListener(R.id.button_direction_right, RIGHT);
 
         // Initiate BL wrapper
         mBleWrapper = new BleWrapper(this, new BleWrapperUiCallbacks.Null() {
@@ -166,8 +166,7 @@ public class MainActivity extends AppCompatActivity {
                                             BluetoothDevice device,
                                             List<BluetoothGattService> services) {
 
-                /*
-                for (BluetoothGattService service : services) {
+                /* for (BluetoothGattService service : services) {
                     String serviceName = BleNamesResolver.resolveUuid(service.getUuid().toString());
 
                     //Log.d("DEBUG", "000P Found service: " + serviceName + " with UUID: "
@@ -198,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
                                                     String strValue,
                                                     int intValue,
                                                     byte[] rawValue,
+
                                                     String timestamp) {
 
                 super.uiNewValueForCharacteristic(gatt,device,service,ch,strValue,
@@ -243,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
 
                 super.uiSuccessfulWrite(gatt, device, service, ch, description);
 
-                // //Log.d("DEBUG", "000P uiSuccessfulWrite.");
+                //Log.d("DEBUG", "000P uiSuccessfulWrite.");
 
                 // Chain reaction for the enabling of notifcations
                 switch (mState) {
@@ -288,13 +288,15 @@ public class MainActivity extends AppCompatActivity {
                 updateStatusMessage(getString(R.string.error_connecting));
                 updateProgressBar(false);
 
-                // //Log.d("DEBUG", "000P uiFailedWrite");
+                //Log.d("DEBUG", "000P uiFailedWrite");
             }
 
 
             @Override
             public void uiDeviceConnected(BluetoothGatt gatt, BluetoothDevice device) {
                 super.uiDeviceConnected(gatt, device);
+
+                //Log.d("DEBUG", "000P Device connected");
 
                 return;
             }
@@ -307,7 +309,7 @@ public class MainActivity extends AppCompatActivity {
                 // Device has disconnected unexpectedly - excepted disconnections handled in disconnect()
                 if (!mState.equals("MANUAL_DISCONNECT")) {
 
-                    // //Log.d("DEBUG", "000P Device disconnected");
+                    //Log.d("DEBUG", "000P Device disconnected");
                     updateStatusMessage(getString(R.string.disconnected));
                     updateProgressBar(false);
                     updateDirectionButtons(false);
@@ -421,6 +423,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void scan() {
 
+        devicesList.clear();
+
         // Check if the window is already open
         if(mState.equals("SCANNING")) {
             // The scanning window is already open.
@@ -505,7 +509,7 @@ public class MainActivity extends AppCompatActivity {
                         clearDim(viewGroup);
 
                         connect(devicesList.get(position).getDeviceAddress());
-                        devicesList.clear();
+
                     }
                 };
 
@@ -593,7 +597,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void enableNotifications(UUID serviceUUID, UUID charUUID) {
 
-        // //Log.d("DEBUG", "000P Setting on notifications");
+        //Log.d("DEBUG", "000P Setting on notifications");
 
         BluetoothGatt gatt;
         BluetoothGattCharacteristic c;
@@ -633,7 +637,6 @@ public class MainActivity extends AppCompatActivity {
         boolean status = true;
 
         if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
-            //Log.d("DEBUG", "000P Front Distance is less than " + ERROR_DISTANCE_FORWARD + ", cancelling and writing 0");
             updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RECT_RED);
             status = false;
         } else {
@@ -641,7 +644,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
-            //Log.d("DEBUG", "000P Left Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
             updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RECT_RED);
             status = false;
         } else {
@@ -649,7 +651,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
-            //Log.d("DEBUG", "000P Right Distance is less than constant " + ERROR_DISTANCE_SIDES + ", cancelling and writing 0");
             updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RECT_RED);
             status = false;
         } else {

@@ -23,7 +23,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.view.menu.ActionMenuItemView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -47,7 +46,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import dylanbudgen.robotcarcontroller.bluetooth.BleNamesResolver;
 import dylanbudgen.robotcarcontroller.bluetooth.BleWrapper;
 import dylanbudgen.robotcarcontroller.bluetooth.BleWrapperUiCallbacks;
 
@@ -82,24 +80,24 @@ public class MainActivity extends AppCompatActivity {
     private BleWrapper mBleWrapper = null;
 
     // Media player for error sounds
-    MediaPlayer errorSoundPlayer;
+    private MediaPlayer mErrorSoundPlayer;
 
     // Sound enabled setting
-    boolean soundEnabled;
+    private boolean mSoundEnabled;
 
     // Variables for scanning popup
-    private FoundDeviceArrayAdapter scanningListviewAdapter;
-    private ArrayList<FoundDevice> devicesList = new ArrayList<>();
+    private FoundDeviceArrayAdapter mScanningListviewAdapter;
+    private ArrayList<FoundDevice> mDevicesList = new ArrayList<>();
     private PopupWindow mPopupWindow = null;
 
     // States
     private String mState = "";
-    int mDirection = 0;
+    private int mDirection = 0;
 
     // Ultrasound values
-    int ultrasoundLeftValue = 100;
-    int ultrasoundFrontValue = 100;
-    int ultrasoundRightValue = 100;
+    private int mUltrasoundLeftValue = 100;
+    private int mUltrasoundFrontValue = 100;
+    private int mUltrasoundRightValue = 100;
 
     // UUIDs of serivces and characteristics
     private static final UUID
@@ -147,14 +145,14 @@ public class MainActivity extends AppCompatActivity {
                     //Log.d("DEBUG", "000P uiDeviceFound: " + deviceName + ", " + rssi);
 
                     // Checking if device has already been found
-                    for (FoundDevice foundDevice : devicesList) {
+                    for (FoundDevice foundDevice : mDevicesList) {
                         if (deviceAddress.equals(foundDevice.getDeviceAddress())) {
                             return; // Device has already been found
                         }
                     }
 
-                    devicesList.add(new FoundDevice(deviceAddress, deviceName));
-                    scanningListviewAdapter.notifyDataSetChanged();
+                    mDevicesList.add(new FoundDevice(deviceAddress, deviceName));
+                    mScanningListviewAdapter.notifyDataSetChanged();
 
                 }
 
@@ -208,17 +206,17 @@ public class MainActivity extends AppCompatActivity {
                 if (updatedUUID.equals(UUID_ULTRASOUND_LEFT)) {
 
                     //Log.d("DEBUG", "000P Ultrasound left read: " + intValue);
-                    ultrasoundLeftValue = intValue;
+                    mUltrasoundLeftValue = intValue;
 
                 } else if (updatedUUID.equals(UUID_ULTRASOUND_FRONT)) {
 
                     //Log.d("DEBUG", "000P Ultrasound front read: " + intValue);
-                    ultrasoundFrontValue = intValue;
+                    mUltrasoundFrontValue = intValue;
 
                 } else if (updatedUUID.equals(UUID_ULTRASOUND_RIGHT)) {
 
                     //Log.d("DEBUG", "000P Ultrasound right read: " + intValue);
-                    ultrasoundRightValue = intValue;
+                    mUltrasoundRightValue = intValue;
 
                 }
 
@@ -340,15 +338,15 @@ public class MainActivity extends AppCompatActivity {
         updateDirectionButtons(false);
         updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
 
-        devicesList.clear();
+        mDevicesList.clear();
         mBleWrapper.initialize();
 
         // Initialise media player
-        errorSoundPlayer = MediaPlayer.create(this, R.raw.beep_censor);
-        errorSoundPlayer.setLooping(false);
+        mErrorSoundPlayer = MediaPlayer.create(this, R.raw.beep_censor);
+        mErrorSoundPlayer.setLooping(false);
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        soundEnabled = sharedPref.getBoolean("sound_switch", false);
+        mSoundEnabled = sharedPref.getBoolean("sound_switch", false);
     }
 
 
@@ -361,16 +359,16 @@ public class MainActivity extends AppCompatActivity {
             mBleWrapper.close();
 
         if  (mPopupWindow != null) {
-            devicesList.clear();
+            mDevicesList.clear();
             mPopupWindow.dismiss();
             ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
             clearDim(viewGroup);
 
         }
 
-        // Media errorSoundPlayer release
-        errorSoundPlayer.release();
-        errorSoundPlayer = null;
+        // Media mErrorSoundPlayer release
+        mErrorSoundPlayer.release();
+        mErrorSoundPlayer = null;
 
     }
 
@@ -423,7 +421,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void scan() {
 
-        devicesList.clear();
+        mDevicesList.clear();
 
         // Check if the window is already open
         if(mState.equals("SCANNING")) {
@@ -486,13 +484,13 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(View view) {
                         mState = "";
                         mBleWrapper.stopScanning();
-                        devicesList.clear();
+                        mDevicesList.clear();
                         mPopupWindow.dismiss();
                         clearDim(viewGroup);
 
-                        // Null the scanningListviewAdapter and PopupWindow to free resources
+                        // Null the mScanningListviewAdapter and PopupWindow to free resources
                         mPopupWindow = null;
-                        scanningListviewAdapter = null;
+                        mScanningListviewAdapter = null;
                     }
             });
 
@@ -508,17 +506,17 @@ public class MainActivity extends AppCompatActivity {
                         ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
                         clearDim(viewGroup);
 
-                        connect(devicesList.get(position).getDeviceAddress());
+                        connect(mDevicesList.get(position).getDeviceAddress());
 
                     }
                 };
 
             // Set up the list adapter to update the list
-            scanningListviewAdapter = new FoundDeviceArrayAdapter(this,
-                        android.R.layout.simple_list_item_2, devicesList);
+            mScanningListviewAdapter = new FoundDeviceArrayAdapter(this,
+                        android.R.layout.simple_list_item_2, mDevicesList);
 
             ListView listView = (ListView) customView.findViewById(R.id.listView_scanning);
-            listView.setAdapter(scanningListviewAdapter);
+            listView.setAdapter(mScanningListviewAdapter);
                 listView.setOnItemClickListener(mMessageClickedHandler);
 
             // Start scanning
@@ -636,21 +634,21 @@ public class MainActivity extends AppCompatActivity {
 
         boolean status = true;
 
-        if (ultrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
+        if (mUltrasoundFrontValue <= ERROR_DISTANCE_FORWARD) {
             updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RECT_RED);
             status = false;
         } else {
             updateUltrasoundSensorGraphic(R.id.textView_front_ultrasound, RECT_GREEN);
         }
 
-        if (ultrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
+        if (mUltrasoundLeftValue <= ERROR_DISTANCE_SIDES) {
             updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RECT_RED);
             status = false;
         } else {
             updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, RECT_GREEN);
         }
 
-        if (ultrasoundRightValue <= ERROR_DISTANCE_SIDES) {
+        if (mUltrasoundRightValue <= ERROR_DISTANCE_SIDES) {
             updateUltrasoundSensorGraphic(R.id.textView_right_ultrasound, RECT_RED);
             status = false;
         } else {
@@ -663,8 +661,8 @@ public class MainActivity extends AppCompatActivity {
             updateForwardButton(false);
 
             if (mDirection == FORWARD) {
-                if (soundEnabled) {
-                    errorSoundPlayer.start();
+                if (mSoundEnabled) {
+                    mErrorSoundPlayer.start();
                 }
                 changeDirection(STOP);
                 return false;

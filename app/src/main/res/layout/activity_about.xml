@@ -20,6 +20,7 @@
 
     <ImageView
         android:id="@+id/imageView_logo"
+        android:contentDescription="@string/UKC_logo"
         android:layout_width="273dp"
         android:layout_height="166dp"
         android:layout_marginLeft="8dp"
@@ -36,7 +37,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="64dp"
-        android:text="Dylan Budgen"
+        android:text="@string/name"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -50,7 +51,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
-        android:text="Computer Science MSc Project"
+        android:text="@string/project"
         android:textSize="18sp"
         app:layout_constraintHorizontal_bias="0.504"
         app:layout_constraintLeft_toLeftOf="parent"

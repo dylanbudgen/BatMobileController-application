@@ -49,6 +49,10 @@ import java.util.UUID;
 import dylanbudgen.robotcarcontroller.bluetooth.BleWrapper;
 import dylanbudgen.robotcarcontroller.bluetooth.BleWrapperUiCallbacks;
 
+/**
+ * Main activity for scanning, connecting to and controlling a robot car.
+ * @author Dylan Budgen
+ */
 public class MainActivity extends AppCompatActivity {
 
     // BatMobile Bluetooth address
@@ -74,7 +78,6 @@ public class MainActivity extends AppCompatActivity {
     private final static int RECT_RED = R.drawable.rect_red;
     private final static int CIRCLE_GREY = R.drawable.circle_grey;
     private final static int CIRCLE_GREEN = R.drawable.circle_green;
-    private final static int CIRCLE_RED = R.drawable.circle_red;
 
     // BL wrapper
     private BleWrapper mBleWrapper = null;
@@ -90,16 +93,18 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<FoundDevice> mDevicesList = new ArrayList<>();
     private PopupWindow mPopupWindow = null;
 
-    // States
+    // State of application
     private String mState = "";
-    private int mDirection = 0;
+
+    // Current direction travelling
+    private int mDirection = STOP;
 
     // Ultrasound values
     private int mUltrasoundLeftValue = 100;
     private int mUltrasoundFrontValue = 100;
     private int mUltrasoundRightValue = 100;
 
-    // UUIDs of serivces and characteristics
+    // UUIDs of services and characteristics
     private static final UUID
             UUID_DIRECTION_SERVICE = UUID.fromString("f0000a000-0000-1000-8000-00805f9b34fb"),
             UUID_DIRECTION_WRITE = UUID.fromString("f0000a002-0000-1000-8000-00805f9b34fb"),
@@ -121,17 +126,21 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(myToolbar);
 
         // Set up button listeners
-        setupButtonListener(R.id.button_direction_backward, BACKWARD);
-        setupButtonListener(R.id.button_direction_stop, STOP);
-        setupButtonListener(R.id.button_direction_forward, FORWARD);
-        setupButtonListener(R.id.button_direction_left, LEFT);
-        setupButtonListener(R.id.button_direction_right, RIGHT);
+        setupDirectionButton(R.id.button_direction_backward, BACKWARD);
+        setupDirectionButton(R.id.button_direction_stop, STOP);
+        setupDirectionButton(R.id.button_direction_forward, FORWARD);
+        setupDirectionButton(R.id.button_direction_left, LEFT);
+        setupDirectionButton(R.id.button_direction_right, RIGHT);
 
         // Initiate BL wrapper
         mBleWrapper = new BleWrapper(this, new BleWrapperUiCallbacks.Null() {
 
             // Override the methods for Bluetooth
 
+            /**
+             * Executed when a device is found while scanning. Device is added to
+             * the array of devices.
+             */
             @Override
             public void uiDeviceFound(final BluetoothDevice device,
                                       final int rssi,
@@ -140,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
                 if(device.getName() != null) {
 
                     String deviceName = device.getName();
-                    String deviceAddress = device.getAddress().toString();
+                    String deviceAddress = device.getAddress();
 
                     //Log.d("DEBUG", "000P uiDeviceFound: " + deviceName + ", " + rssi);
 
@@ -153,12 +162,13 @@ public class MainActivity extends AppCompatActivity {
 
                     mDevicesList.add(new FoundDevice(deviceAddress, deviceName));
                     mScanningListviewAdapter.notifyDataSetChanged();
-
                 }
-
             }
 
-            // Executed when a service is found
+            /**
+             *  Executed when services are discovered after connecting.
+             *  Initiates the chain of events to setup car.
+             */
             @Override
             public void uiAvailableServices(BluetoothGatt gatt,
                                             BluetoothDevice device,
@@ -181,12 +191,14 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                updateStatusMessage(getString(R.string.updating_settings));
+                updateTextView(R.id.textview_connection_status, getString(R.string.updating_settings));
                 setSpeedSetting();
             }
 
-
-            // Executed when a new value for a characteristic is found (also through notifications)
+            /**
+             * Executed when a characteristic is updated. Checks what characteristic was changed
+             * and calls checkSensor method.
+             */
             @Override
             public void uiNewValueForCharacteristic(BluetoothGatt gatt,
                                                     BluetoothDevice device,
@@ -217,7 +229,6 @@ public class MainActivity extends AppCompatActivity {
 
                     //Log.d("DEBUG", "000P Ultrasound right read: " + intValue);
                     mUltrasoundRightValue = intValue;
-
                 }
 
                 // Device was told to disconnect but attempted to connect again
@@ -226,10 +237,11 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 checkSensor();
-
             }
 
-            // Executed on successful write
+            /**
+             * Executed on successful write of a characteristic.
+             */
             @Override
             public void uiSuccessfulWrite( BluetoothGatt gatt,
                                            BluetoothDevice device,
@@ -237,13 +249,11 @@ public class MainActivity extends AppCompatActivity {
                                            BluetoothGattCharacteristic ch,
                                            String description) {
 
-                BluetoothGattCharacteristic c;
-
                 super.uiSuccessfulWrite(gatt, device, service, ch, description);
 
                 //Log.d("DEBUG", "000P uiSuccessfulWrite.");
 
-                // Chain reaction for the enabling of notifcations
+                // Chain reaction for the enabling of notifications
                 switch (mState) {
                     case "SET_SPEED_SETTING" :
                         // Now enable the left sensor, then the front sensor
@@ -262,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
                     case "UPDATE_PROGRESS_BAR" :
                         mState = "CONNECTED";
                         updateProgressBar(false);
-                        updateStatusMessage(getString(R.string.connected));
+                        updateTextView(R.id.textview_connection_status, getString(R.string.connected));
                         updateDirectionButtons(true);
                         updateUltrasoundGraphics(RECT_GREEN, CIRCLE_GREEN);
                         break;
@@ -271,7 +281,9 @@ public class MainActivity extends AppCompatActivity {
 
             }
 
-            // Executed on failed write
+            /**
+             * Executed on failed write of a characteristic.
+             */
             @Override
             public void uiFailedWrite( BluetoothGatt gatt,
                                        BluetoothDevice device,
@@ -283,23 +295,26 @@ public class MainActivity extends AppCompatActivity {
 
                 mBleWrapper.diconnect();
 
-                updateStatusMessage(getString(R.string.error_connecting));
+                updateTextView(R.id.textview_connection_status, getString(R.string.error_connecting));
                 updateProgressBar(false);
 
                 //Log.d("DEBUG", "000P uiFailedWrite");
             }
 
-
+            /**
+             * Executed on device connection.
+             */
             @Override
             public void uiDeviceConnected(BluetoothGatt gatt, BluetoothDevice device) {
                 super.uiDeviceConnected(gatt, device);
 
                 //Log.d("DEBUG", "000P Device connected");
 
-                return;
             }
 
-
+            /**
+             * Executed on device disconnection.
+             */
             @Override
             public void uiDeviceDisconnected(BluetoothGatt gatt, BluetoothDevice device) {
                 super.uiDeviceDisconnected(gatt, device);
@@ -308,7 +323,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!mState.equals("MANUAL_DISCONNECT")) {
 
                     //Log.d("DEBUG", "000P Device disconnected");
-                    updateStatusMessage(getString(R.string.disconnected));
+                    updateTextView(R.id.textview_connection_status, getString(R.string.disconnected));
                     updateProgressBar(false);
                     updateDirectionButtons(false);
                     updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
@@ -333,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         mState = "";
-        updateStatusMessage(getString(R.string.no_connection));
+        updateTextView(R.id.textview_connection_status, getString(R.string.no_connection));
         updateProgressBar(false);
         updateDirectionButtons(false);
         updateUltrasoundGraphics(RECT_GREY, CIRCLE_GREY);
@@ -372,14 +387,13 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    // Required to set up toolbar and add buttons from res/main_menu/main_menu.xmlu.xml
+    // Required to set up toolbar and add buttons
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
         getMenuInflater().inflate(R.menu.main_menu, menu);
         return super.onCreateOptionsMenu(menu);
     }
-
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -406,19 +420,26 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Show the about page
+
+    /**
+     * Start the about page activity
+     */
     private void showAbout() {
         Intent intent = new Intent(this, AboutActivity.class);
         startActivity(intent);
     }
 
-    // Change the settings
+    /**
+     * Start the settings activity
+     */
     private void showSettings() {
         Intent intent = new Intent(this, SettingsActivity.class);
         startActivity(intent);
     }
 
-
+    /**
+     * Open the pop up window and begin scanning. Allow the user to choose a device to connect to.
+     */
     private void scan() {
 
         mDevicesList.clear();
@@ -436,7 +457,7 @@ public class MainActivity extends AppCompatActivity {
             // Reset bluetooth if already connected, so user can connect again
             if (mBleWrapper.isConnected()) {
                 updateProgressBar(true);
-                updateStatusMessage(getString(R.string.disconnecting));
+                updateTextView(R.id.textview_connection_status, getString(R.string.disconnecting));
                 disconnect();
                 return;
             }
@@ -525,11 +546,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-    /*
-     *  Method written by Markus Rubey - https://stackoverflow.com/users/1399597/markus-rubey
+    /**
+     * Apply a dim to the background view.
+     * @author Markus Rubey
+     * @author https://stackoverflow.com/users/1399597/markus-rubey
+     * @param parent parent ViewGroup
+     * @param dimAmount the amount of dim applied
      */
-    public static void applyDim(@NonNull ViewGroup parent, float dimAmount){
+    private static void applyDim(@NonNull ViewGroup parent, float dimAmount){
         Drawable dim = new ColorDrawable(Color.BLACK);
         dim.setBounds(0, 0, parent.getWidth(), parent.getHeight());
         dim.setAlpha((int) (255 * dimAmount));
@@ -538,18 +562,25 @@ public class MainActivity extends AppCompatActivity {
         overlay.add(dim);
     }
 
-    /*
-     *  Method written by Markus Rubey - https://stackoverflow.com/users/1399597/markus-rubey
+    /**
+     * Clear the dim to the background view.
+     * @author Markus Rubey
+     * @author https://stackoverflow.com/users/1399597/markus-rubey
+     * @param parent parent ViewGroup
      */
-    public static void clearDim(@NonNull ViewGroup parent) {
+    private static void clearDim(@NonNull ViewGroup parent) {
         ViewGroupOverlay overlay = parent.getOverlay();
         overlay.clear();
     }
 
-    public void connect(String address) {
+    /**
+     * Connect to a specific device by address.
+     * @param address device address for connecting
+     */
+    private void connect(String address) {
 
         if (!address.equals(BATMOBILE_ADDRESS)) {
-            updateStatusMessage(getString(R.string.wrong_device));
+            updateTextView(R.id.textview_connection_status, getString(R.string.wrong_device));
             return;
         }
 
@@ -561,15 +592,15 @@ public class MainActivity extends AppCompatActivity {
             //Log.d("DEBUG", "000P Connecting");
             mState = "CONNECTING";
             updateProgressBar(true);
-            updateStatusMessage(getString(R.string.connecting));
+            updateTextView(R.id.textview_connection_status, getString(R.string.connecting));
             mBleWrapper.connect(address);
         }
     }
 
-    /*
-     * Manual disconnect - required to allow time for wrapper to disconnect successfully
+    /**
+     * Manually disconnect, giving time for Bluetooth wrapper to disconnect fully.
      */
-    public void disconnect() {
+    private void disconnect() {
 
         mState = "MANUAL_DISCONNECT";
 
@@ -586,25 +617,28 @@ public class MainActivity extends AppCompatActivity {
 
                 updateConnectButton(true);
                 updateProgressBar(false);
-                updateStatusMessage(getString(R.string.ready));
+                updateTextView(R.id.textview_connection_status, getString(R.string.ready));
             }
         }, 2000);
-
-
     }
 
-    public void enableNotifications(UUID serviceUUID, UUID charUUID) {
+    /**
+     * Enable notifications to a characteristic
+     * @param service UUID of service
+     * @param characteristic UUID of characteristic
+     */
+    private void enableNotifications(UUID service, UUID characteristic) {
 
         //Log.d("DEBUG", "000P Setting on notifications");
-
-        BluetoothGatt gatt;
-        BluetoothGattCharacteristic c;
-        gatt = mBleWrapper.getGatt();
-        c = gatt.getService(serviceUUID).getCharacteristic(charUUID);
+        BluetoothGatt gatt = mBleWrapper.getGatt();
+        BluetoothGattCharacteristic c = gatt.getService(service).getCharacteristic(characteristic);
         mBleWrapper.setNotificationForCharacteristic(c, true);
     }
 
-    public void setSpeedSetting() {
+    /**
+     * Send speed setting to robotcar.
+     */
+    private void setSpeedSetting() {
 
         mState = "SET_SPEED_SETTING";
 
@@ -614,7 +648,13 @@ public class MainActivity extends AppCompatActivity {
         writeToCharacteristic(UUID_SPEED_SERVICE, UUID_SPEED_WRITE, speed);
     }
 
-    public void writeToCharacteristic(UUID service, UUID characteristic, int writeValue) {
+    /**
+     * Write an integer to a characteristic
+     * @param service UUID of service
+     * @param characteristic UUID of characteristic
+     * @param writeValue value to write
+     */
+    private void writeToCharacteristic(UUID service, UUID characteristic, int writeValue) {
 
         BluetoothGatt gatt;
         BluetoothGattCharacteristic c;
@@ -626,11 +666,13 @@ public class MainActivity extends AppCompatActivity {
 
         value[0] = (byte) (writeValue);
         mBleWrapper.writeDataToCharacteristic(c, value);
-
     }
 
-
-    public boolean checkSensor() {
+    /**
+     * Check if sensors are triggered and avoid obstacles
+     * @return if car is facing obstacle
+     */
+    private boolean checkSensor() {
 
         boolean status = true;
 
@@ -661,9 +703,7 @@ public class MainActivity extends AppCompatActivity {
             updateForwardButton(false);
 
             if (mDirection == FORWARD) {
-                if (mSoundEnabled) {
-                    mErrorSoundPlayer.start();
-                }
+                if (mSoundEnabled) { mErrorSoundPlayer.start(); }
                 changeDirection(STOP);
                 return false;
             }
@@ -672,29 +712,28 @@ public class MainActivity extends AppCompatActivity {
             return true;
 
         } else {
-
             // sensors are all fine, so return true and enable forward button
             updateForwardButton(true);
             return true;
-
         }
     }
 
-    public void changeDirection(int direction) {
+    private void changeDirection(int direction) {
 
         mDirection = direction;
 
         if (direction == STOP) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
-            return;
 
         } else if (checkSensor()) {
             writeToCharacteristic(UUID_DIRECTION_SERVICE, UUID_DIRECTION_WRITE, direction);
         }
-
     }
 
-
+    /**
+     * Enable or disable the connect button
+     * @param status new status of button
+     */
     private void updateConnectButton(final boolean status) {
 
         runOnUiThread(new Runnable() {
@@ -706,10 +745,12 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
-
     }
 
-
+    /**
+     * Enable or disable the forward button
+     * @param status new status of forward button
+     */
     private void updateForwardButton(final boolean status) {
 
         runOnUiThread(new Runnable() {
@@ -723,6 +764,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Enable or disable the all direction buttons
+     * @param status new status of direction buttons
+     */
     private void updateDirectionButtons(final boolean status) {
 
         runOnUiThread(new Runnable() {
@@ -748,6 +793,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Update the colour of a part of the ultrasound graphic
+     * @param id id of the graphic
+     * @param colour new colour
+     */
     private void updateUltrasoundSensorGraphic(final int id, final int colour) {
 
         runOnUiThread(new Runnable() {
@@ -760,7 +810,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Null for grey, false for red, true for green
+    /**
+     * Update the colour of the whole ultrasound graphic
+     * @param rectColour new colour for the rectangle
+     * @param circleColour new colour for the circle
+     */
     private void updateUltrasoundGraphics(final int rectColour, final int circleColour) {
 
         updateUltrasoundSensorGraphic(R.id.textView_left_ultrasound, rectColour);
@@ -779,6 +833,10 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * Update the visibility of the progress bar
+     * @param visibility new visibility of the progress bar
+     */
     private void updateProgressBar(final boolean visibility) {
 
         runOnUiThread(new Runnable() {
@@ -796,19 +854,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
-    private void updateStatusMessage(final String message) {
+    /**
+     * Update the status message text
+     * @param textviewId id of text view
+     * @param message string to show to user
+     */
+    private void updateTextView(final int textviewId, final String message) {
 
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
 
-                TextView textView = (TextView) findViewById(R.id.textview_connection_status);
+                TextView textView = (TextView) findViewById(textviewId);
                 textView.setText(message);
             }
         });
     }
 
+    /**
+     * Check if permissions are activated or make request
+     * @return user response
+     */
     private boolean checkBluetoothPermissions() {
 
         if (Build.VERSION.SDK_INT > 22) {  // Device needs runtime permissions
@@ -823,11 +889,17 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
+    /**
+     * Executed when user responds to permissions and handles responses
+     * @param requestCode identifier for permission
+     * @param permissions permissions
+     * @param grantResults user responses
+     */
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
 
         if (requestCode == REQUEST_CODE_ACCESS_FINE_LOCATION) {
-            // Permission for location recieved
+            // Permission for location received
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             } else {
                 Toast.makeText(this, R.string.permissions_rejected, Toast.LENGTH_SHORT).show();
@@ -837,7 +909,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupButtonListener(int buttonName, final int direction) {
+    /**
+     * Set up the direction button listener
+     * @param buttonName name of button
+     * @param direction direction of button
+     */
+    private void setupDirectionButton(int buttonName, final int direction) {
 
         Button button = (Button) findViewById(buttonName);
 
@@ -864,8 +941,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
-
+    /**
+     * Check if Bluetooth is enabled, and make request.
+     */
     private void checkBluetoothStatus() {
 
         if (!mBleWrapper.isBtEnabled()) {

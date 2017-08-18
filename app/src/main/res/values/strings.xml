@@ -2,6 +2,10 @@
     <string name="app_name">BatMobile Controller</string>
     <string name="detail_app_name">BatMobile</string>
 
+    <!-- Menu -->
+    <string name="menu_connect">Connect</string>
+    <string name="menu_settings">Settings</string>
+    <string name="menu_about">About</string>
 
     <!-- Connection status -->
     <string name="no_connection">Press connect to start</string>
@@ -9,18 +13,39 @@
     <string name="connected">Connected</string>
     <string name="disconnecting">Disconnecting</string>
     <string name="ready">Press connect to start</string>
-    <string name="discovering_services">Discovering services...</string>
-    <string name="updating_settings">Updating settings...</string>
+    <string name="updating_settings">Updating settings…</string>
     <string name="disconnected">Car has disconnected. This is most likely an issue with the car. Check all wiring is secured. You may have to restart the application and car.</string>
 
     <!-- Errors -->
     <string name="error_connecting">Error occurred. Please restart application.</string>
     <string name="wrong_device">Device selected is not BatMobile. Please try again.</string>
-    <string name="error_restarting">Error occured. Closing application</string>
+    <string name="error_restarting">Error occurred. Closing application</string>
     <string name="BL_off">This application requires Bluetooth to be turned on</string>
 
     <!-- Permissions -->
     <string name="permissions_rejected">Application needs location permission to use Bluetooth</string>
+
+    <!-- Directions -->
+    <string name="forward">FORWARD</string>
+    <string name="left">LEFT</string>
+    <string name="right">RIGHT</string>
+    <string name="stop">STOP</string>
+    <string name="backward">BACKWARD</string>
+
+    <!-- Ultrasound graphic -->
+    <string name="ultrasound_desc">Ultrasound sensor graphic</string>
+
+    <!-- Popup window -->
+    <string name="close_button">Close button</string>
+    <string name="available_devices">AVAILABLE DEVICES</string>
+    <string name="select_device">Select your device to connect.</string>
+    <string name="searching">Searching</string>
+
+    <!-- About page -->
+    <string name="UKC_logo">UKC Logo</string>
+    <string name="name">Dylan Budgen</string>
+    <string name="project">Computer Science MSc Project</string>
+    <string name="version">v</string>
 
     <!-- Settings -->
     <string name="sound_group">Sound settings</string>

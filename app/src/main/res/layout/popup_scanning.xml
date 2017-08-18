@@ -10,14 +10,12 @@
 
     android:layout_marginLeft="20dip"
     android:layout_marginRight="20dip"
-    android:background="@drawable/rounded_corners"
+    android:background="@drawable/rounded_corners" >
 
 
-
-
-    >
     <ImageButton
         android:id="@+id/ib_close"
+        android:contentDescription="@string/close_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_clear"
@@ -40,7 +38,7 @@
         android:paddingTop="10dp"
         android:paddingLeft="15dp"
         android:paddingRight="15dp"
-        android:text="AVAILABLE DEVICES"
+        android:text="@string/available_devices"
         android:textAlignment="viewStart"
         android:textAppearance="@style/TextAppearance.AppCompat.Button"
         android:textSize="16sp"
@@ -60,7 +58,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:padding="5sp"
-        android:text="Select your device to connect."
+        android:text="@string/select_device"
         android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.AppCompat.Small"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -101,7 +99,7 @@
         android:id="@+id/textView_searching"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Searching"
+        android:text="@string/searching"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintHorizontal_bias="0.503"

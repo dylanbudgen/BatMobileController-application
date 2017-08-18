@@ -10,6 +10,10 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.TextView;
 
+/**
+ * About activity to show users information about the project
+ * @author Dylan Budgen
+ */
 public class AboutActivity extends AppCompatActivity {
 
     @Override
@@ -48,25 +52,36 @@ public class AboutActivity extends AppCompatActivity {
         return true;
     }
 
+    /**
+     * Show version number on activity
+     */
     private void setVersionInfo() {
 
         try {
             PackageInfo pInfo = this.getPackageManager().getPackageInfo(getPackageName(), 0);
             final String version = pInfo.versionName;
-
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-
-                    TextView textViewVersion = (TextView) findViewById(R.id.textView_version);
-                    textViewVersion.setText("v" + version);
-                }
-            });
+            updateTextView(R.id.textView_version, getString(R.string.version) + version);
 
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
         }
+    }
 
+    /**
+     * Update the status message text
+     * @param textviewId id of text view
+     * @param message string to show to user
+     */
+    private void updateTextView(final int textviewId, final String message) {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                TextView textView = (TextView) findViewById(textviewId);
+                textView.setText(message);
+            }
+        });
     }
 
 }

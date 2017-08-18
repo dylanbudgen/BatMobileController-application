@@ -8,6 +8,10 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 
+/**
+ * Settings activity to present and allow user to change application settings
+ * @author Dylan Budgen
+ */
 public class SettingsActivity extends AppCompatActivity {
 
     @Override
@@ -32,7 +36,6 @@ public class SettingsActivity extends AppCompatActivity {
         getFragmentManager().beginTransaction()
                 .replace(R.id.frame, new SettingsFragment())
                 .commit();
-
     }
 
     public static class SettingsFragment extends PreferenceFragment {
@@ -40,7 +43,7 @@ public class SettingsActivity extends AppCompatActivity {
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
 
-            // Load the preferences from an XML resource
+            // Load the preferences from XML resource
             addPreferencesFromResource(R.xml.settings);
             setHasOptionsMenu(true);
         }
@@ -59,6 +62,5 @@ public class SettingsActivity extends AppCompatActivity {
         onBackPressed();
         return true;
     }
-
 
 }

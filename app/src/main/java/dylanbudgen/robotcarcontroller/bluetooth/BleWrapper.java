@@ -98,10 +98,7 @@ public class BleWrapper {
         }
 
         if(mBluetoothAdapter == null) mBluetoothAdapter = mBluetoothManager.getAdapter();
-        if (mBluetoothAdapter == null) {
-            return false;
-        }
-        return true;    	
+        return mBluetoothAdapter != null;
     }
 
     /* connect to the device with specified address */
@@ -433,15 +430,15 @@ public class BleWrapper {
         	else {
         		 mUiCallback.uiFailedWrite(mBluetoothGatt, mBluetoothDevice, mBluetoothSelectedService, characteristic, description + " STATUS = " + status);
         	}
-        };
-        
+        }
+
         @Override
         public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
         	if(status == BluetoothGatt.GATT_SUCCESS) {
         		// we got new value of RSSI of the connection, pass it to the UI
         		 mUiCallback.uiNewRssiAvailable(mBluetoothGatt, mBluetoothDevice, rssi);
         	}
-        };
+        }
 
         // Added by Akiba
         @Override
@@ -460,7 +457,7 @@ public class BleWrapper {
             else {
                 mUiCallback.uiFailedWrite(mBluetoothGatt, mBluetoothDevice, mBluetoothSelectedService, descriptor.getCharacteristic(), description + " STATUS = " + status);
             }
-        };
+        }
     };
 
 

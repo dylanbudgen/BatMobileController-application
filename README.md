@@ -1,4 +1,4 @@
-## BatMobileController-application
+## RobotCarController-application
 The Android application used to create a home-made robot car fitted with ultrasound sensors for obstacle avoidance. 
 
 Live demonstration - https://www.youtube.com/watch?v=WY6vhOnCg6I 
